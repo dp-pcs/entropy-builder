@@ -28,25 +28,26 @@ Rule: if you think you're remembering something that isn't here, it's in one of 
 
 ## Current task
 
-Initialize this directory as a git repository, create the matching private GitHub repo, and push the initial commit.
+Completed: initialized this directory as a git repository, created the matching private GitHub repo, and pushed the initial commit.
 
 ## Active hypothesis
 
-`gh` is authenticated as `dp-pcs`, the directory is not yet a git repo, and the intended repository name is `entropy`.
+Confirmed: `gh` is authenticated as `dp-pcs`, the repo name is `entropy`, and `origin/main` now points to the private GitHub repository.
 
 ## Open threads
 
-Whether `entropy` is still available under `dp-pcs`, and whether an initial push is wanted as part of "enable this as a GitHub repository"`.`
+None.
 
 ## Temp data
 
 Local path: `/Users/davidproctor/Documents/GitHub/entropy`
 GitHub owner: `dp-pcs`
-Target visibility: `private`
+Remote URL: `git@github.com:dp-pcs/entropy.git`
+Default branch: `main`
 
 ## Notes to next-me
 
-If remote creation fails because the name already exists, inspect the existing `dp-pcs/entropy` repo before doing anything destructive.
+Repository setup is complete; the only unpushed changes after the initial bootstrap were memory and bead-ledger updates documenting the setup.
 
 ---
 

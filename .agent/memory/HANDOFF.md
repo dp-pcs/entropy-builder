@@ -4,11 +4,11 @@
 
 ## Last session
 
-**Date:** _(filled at session end)_
-**In flight:** _(beads currently in_progress)_
-**Next up:** _(beads ready to claim)_
-**Blocked:** _(beads blocked + blocker)_
-**Open questions for the human:** _(if any)_
+**Date:** 2026-04-30
+**In flight:** none
+**Next up:** pre-seeded onboarding beads `B0001`, `B0002`, `B0003`
+**Blocked:** `B0004`-`B0027` remain blocked or pending per the seeded ledger; the GitHub enablement beads `B0028`-`B0031` are done
+**Open questions for the human:** none
 
 ---
 

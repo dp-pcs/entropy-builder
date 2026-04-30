@@ -78,6 +78,6 @@ For real work the human gives you:
 ./bd-lite.sh create "<imperative task description>" --priority P1
 ```
 | B0028 | P1 | done | — | Initialize local git repository for entropy on branch main | davidproctor | Ran git init -b main in /Users/davidproctor/Documents/GitHub/entropy and created .git/ with local branch main |
-| B0029 | P1 | in_progress | B0028 | Create the initial commit for the current repo contents | davidproctor | — |
-| B0030 | P1 | blocked | B0029 | Create private GitHub repo dp-pcs/entropy and add origin remote | — | — |
-| B0031 | P1 | blocked | B0030 | Push main to origin and verify upstream wiring | — | — |
+| B0029 | P1 | done | B0028 | Create the initial commit for the current repo contents | davidproctor | Committed current scaffold with git add . and git commit -m 'Initial commit'; commit 22cc40f tracks 27 files including .agent/, AGENTS.md, and CLAUDE.md |
+| B0030 | P1 | done | B0029 | Create private GitHub repo dp-pcs/entropy and add origin remote | davidproctor | Created private GitHub repository dp-pcs/entropy with gh repo create and added origin as git@github.com:dp-pcs/entropy.git; GitHub reports visibility PRIVATE |
+| B0031 | P1 | done | B0030 | Push main to origin and verify upstream wiring | davidproctor | Pushed local branch main to origin/main with git push -u origin main; upstream tracking now set for origin/main on dp-pcs/entropy |
