@@ -1,0 +1,10 @@
+{
+  "id": "entropy-inbox-processor",
+  "name": "Entropy Inbox Processor",
+  "version": "0.1.0",
+  "minAppVersion": "0.15.0",
+  "description": "AI-powered inbox processing from the Entropy Second Brain framework. Analyzes items, detects topic clusters, suggests MOCs, and integrates content automatically.",
+  "author": "David Proctor",
+  "authorUrl": "https://github.com/dp-pcs/entropy",
+  "isDesktopOnly": true
+}

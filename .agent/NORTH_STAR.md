@@ -19,6 +19,17 @@ You are not starting from zero. Previous sessions left state in files. Pick up f
 
 ## First actions on a new session
 
+**Before anything else — detect whether this is a new user or a returning session:**
+
+```bash
+# Check for an existing vault profile (sign of a built brain)
+ls ~/.agent/memory/USER.md 2>/dev/null || \
+find ~ -maxdepth 4 -name "*-Profile.md" -path "*/Second-Brain*" 2>/dev/null | head -1
+```
+
+- **No profile found** → This is a new user. Run the onboard skill immediately. Do not read SOUL/AGENT/MEMORY first — the human doesn't care about agent internals. Say: "Let's build your Second Brain." and follow `.agent/skills/onboard/SKILL.md`.
+- **Profile found** → Returning session. Continue with normal startup below.
+
 ```
 1. Read .agent/SOUL.md                    (who you are)
 2. Read .agent/AGENT.md                   (how you work)

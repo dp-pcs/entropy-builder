@@ -1,0 +1,248 @@
+/* Entropy Inbox Processor Styles */
+
+.entropy-inbox-view {
+  padding: 16px;
+}
+
+.entropy-header h4 {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+}
+
+.entropy-inbox-count {
+  margin: 8px 0;
+}
+
+.entropy-inbox-count p {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.entropy-ai-status {
+  margin: 12px 0;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.entropy-ai-enabled {
+  color: var(--text-accent);
+  font-weight: 500;
+}
+
+.entropy-ai-disabled {
+  color: var(--text-muted);
+}
+
+.entropy-cost-estimate {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.entropy-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+}
+
+/* MOC Suggestions */
+
+.entropy-moc-suggestions {
+  margin: 16px 0;
+}
+
+.entropy-moc-suggestions h5 {
+  margin: 0 0 12px 0;
+  color: var(--text-accent);
+}
+
+.entropy-moc-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+}
+
+.entropy-moc-card h6 {
+  margin: 0 0 8px 0;
+  color: var(--text-normal);
+}
+
+.entropy-moc-card p {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+.entropy-moc-items {
+  margin: 8px 0 12px 0;
+  padding-left: 20px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.entropy-moc-items li {
+  margin: 4px 0;
+}
+
+/* Item Proposals */
+
+.entropy-item-proposals {
+  margin: 16px 0;
+}
+
+.entropy-item-proposals h5 {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+}
+
+.entropy-item-card {
+  background: var(--background-primary-alt);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 0;
+}
+
+.entropy-item-card h6 {
+  margin: 0 0 8px 0;
+  color: var(--text-normal);
+  font-size: 1.1em;
+}
+
+.entropy-meta {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+/* Relationships */
+
+.entropy-relationships {
+  margin: 12px 0;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.entropy-relationships strong {
+  color: var(--text-normal);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.entropy-relationships ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.entropy-relationships li {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+/* Actions */
+
+.entropy-actions {
+  margin: 16px 0 0 0;
+}
+
+.entropy-actions strong {
+  color: var(--text-normal);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.entropy-action-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 12px;
+  margin: 8px 0;
+}
+
+.entropy-action-card p {
+  margin: 4px 0;
+  font-size: 0.9em;
+}
+
+.entropy-rationale {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Action Buttons */
+
+.entropy-action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.entropy-action-buttons button {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.entropy-action-buttons button:hover {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+.entropy-action-buttons button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  font-weight: 500;
+}
+
+/* Navigation */
+
+.entropy-navigation {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.entropy-navigation button {
+  flex: 1;
+  padding: 8px 16px;
+}
+
+.entropy-navigation button.mod-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Settings */
+
+.entropy-security-notice {
+  background: var(--background-secondary);
+  border-left: 3px solid var(--color-orange);
+  padding: 12px;
+  margin: 16px 0;
+  border-radius: 4px;
+}
+
+.entropy-warning-title {
+  font-weight: 600;
+  color: var(--color-orange);
+  margin: 0 0 8px 0;
+}
+
+.entropy-security-notice p {
+  font-size: 0.9em;
+  margin: 6px 0;
+  color: var(--text-muted);
+}

@@ -1,0 +1,11 @@
+# Core dependencies (always needed)
+# None - stdlib only for keyword-based analysis
+
+# Optional: LLM analysis (install if using --use-ai)
+anthropic>=0.18.0  # For Claude models
+openai>=1.12.0     # For GPT models
+
+# Install with:
+# pip install -r requirements.txt  # Install all
+# pip install anthropic  # Or just Anthropic
+# pip install openai     # Or just OpenAI
