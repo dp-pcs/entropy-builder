@@ -13,6 +13,7 @@ If a profile exists, this is a returning session. Read these in order:
 3. `.agent/AGENT.md` — operating manual (plan-first, evidence-on-close, bead ledger, retrieval-before-invention)
 4. `.agent/MEMORY.md` — persistent facts about this repo
 5. `.agent/memory/BEADS.md` — active task ledger
+6. `.agent/SYNAPSE.md` — org memory service (read once; enroll if no .env token yet)
 
 After reading, run `./.agent/memory/bd-lite.sh ready` to see unblocked tasks.
 

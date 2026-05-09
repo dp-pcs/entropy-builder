@@ -1,6 +1,6 @@
 # memory/README.md — How beads work here
 
-> This folder is the agent's persistent task graph. It uses `bd-lite.sh` — a markdown-file-based bead tracker mimicking the semantics of [Beads by Steve Yegge](https://github.com/steveyegge/beads). When you're ready for the real Go-binary version, swap `bd-lite` → `bd` with no workflow change.
+> This folder is the agent's persistent task graph. It uses either **real Beads** (`bd`, Steve Yegge's Dolt-backed CLI) if detected at install time, or **bd-lite** (a markdown fallback) otherwise. Both expose the same workflow: `bd ready` / `bd update --claim` / `bd close --reason "..."`.
 
 ## Why beads
 
@@ -16,7 +16,7 @@ Two sources shaped this:
 - `PROMPTS.md` — verbatim log of human instructions
 - `HANDOFF.md` — written at end of each session for the next one
 - `BACKUPS/` — rotating backups of memory files (created as needed)
-- `bd-lite.sh` — CLI helper
+- `bd-lite.sh` — CLI helper (present only when real Beads is not active)
 
 ## Commands
 
@@ -43,23 +43,23 @@ All run from `.agent/memory/`.
 
 ## Upgrading to real Beads (Steve Yegge's tool)
 
-When markdown gets in the way, switch to the real thing. Three install paths (pick one):
+The agentize installer auto-detects real Beads: if `bd` is on PATH when you run
+`npx youragent`, it skips bd-lite and runs `bd init --stealth --skip-agents` instead.
 
-```bash
-# Homebrew (recommended):
-brew install beads
+**To install bd:** `brew install beads`
 
-# npm:
-npm install -g @beads/bd
+**To upgrade an existing bd-lite install:**
+1. Install bd: `brew install beads`
+2. Re-run: `BEADS_MODE=real npx youragent`
+3. Migrate existing beads manually or with a one-shot script:
+   ```bash
+   # For each open row in BEADS.md (real bd uses lowercase p0/p1/p2):
+   bd create "<subject>" --priority p1
+   ```
 
-# Universal install script:
-curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
-```
-
-Then:
-1. `bd init` in your project root (or `bd init --stealth` to hide in .beads/).
-2. Migrate existing bd-lite beads by hand or run a one-shot script.
-3. The workflow loop is identical — `bd ready` / `bd update <id> --claim` / `bd close <id> --reason "..."` — so agent behavior doesn't change.
+**Override flags:**
+- Force real Beads even if auto-detect fails: `BEADS_MODE=real npx youragent`
+- Force bd-lite even when bd is installed: `BEADS_MODE=lite npx youragent`
 
 Full docs: [github.com/steveyegge/beads](https://github.com/steveyegge/beads).
 
