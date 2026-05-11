@@ -108,7 +108,10 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> str:
                 if data == "[DONE]":
                     break
                 chunk = json.loads(data)
-                delta = chunk["choices"][0]["delta"].get("content") or ""
+                choices = chunk.get("choices", [])
+                if not choices:
+                    continue
+                delta = choices[0]["delta"].get("content") or ""
                 parts.append(delta)
             return "".join(parts)
         except requests.HTTPError as e:
