@@ -8,9 +8,9 @@ from .models import JobConfig, CustomerRecord, VaultFile
 _NOTION_API = "https://api.notion.com/v1"
 
 
-def _query_database(token: str, database_id: str, filter_body: dict, cursor: str | None = None) -> dict:
-    """POST /databases/{id}/query directly — notion-client SDK dropped this method."""
-    body: dict = {"filter": filter_body, "page_size": 100}
+def _query_page(token: str, database_id: str, cursor: str | None = None) -> dict:
+    """POST /databases/{id}/query directly — fetch one page of results."""
+    body: dict = {"page_size": 100}
     if cursor:
         body["start_cursor"] = cursor
     resp = requests.post(
@@ -24,25 +24,28 @@ def _query_database(token: str, database_id: str, filter_body: dict, cursor: str
 
 
 def pull_customers(config: JobConfig) -> list[CustomerRecord]:
-    """Query the shared Notion DB filtered by account manager name(s)."""
-    names = (config.team_members if config.user_role == "manager"
-             else [config.account_manager_name])
+    """Fetch all rows from the Notion DB and filter by account manager name(s) in Python.
+
+    We avoid server-side filtering because the 'Account Manager' property may be a
+    Notion People type, which rejects rich_text filter syntax with a 400 error.
+    """
+    target_names = set(
+        config.team_members if config.user_role == "manager"
+        else ([config.account_manager_name] if config.account_manager_name else [])
+    )
 
     all_rows = []
-    for name in names:
-        cursor = None
-        while True:
-            resp = _query_database(
-                config.notion_token,
-                config.notion_database_id,
-                {"property": "Account Manager", "rich_text": {"equals": name}},
-                cursor,
-            )
-            for page in resp.get("results", []):
-                all_rows.append(_page_to_row(page))
-            cursor = resp.get("next_cursor")
-            if not resp.get("has_more") or not cursor:
-                break
+    cursor = None
+    while True:
+        resp = _query_page(config.notion_token, config.notion_database_id, cursor)
+        for page in resp.get("results", []):
+            all_rows.append(_page_to_row(page))
+        cursor = resp.get("next_cursor")
+        if not resp.get("has_more") or not cursor:
+            break
+
+    if target_names:
+        all_rows = [r for r in all_rows if r.get("Account Manager", "") in target_names]
 
     return parse_notion_rows(all_rows)
 
