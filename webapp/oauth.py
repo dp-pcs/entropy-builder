@@ -12,9 +12,6 @@ _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GOOGLE_SCOPES = "openid email https://www.googleapis.com/auth/gmail.readonly"
 
-_NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
-_NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
-
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
 
@@ -86,45 +83,6 @@ def google_callback(code: str, state: str):
     ))
 
 
-@router.get("/oauth/notion")
-def notion_start(session_id: str):
-    _validate_state(session_id)
-    params = {
-        "client_id": settings.notion_client_id,
-        "redirect_uri": f"{settings.base_url}/oauth/notion/callback",
-        "response_type": "code",
-        "owner": "user",
-        "state": session_id,
-    }
-    return RedirectResponse(_NOTION_AUTH_URL + "?" + urllib.parse.urlencode(params))
-
-
-@router.get("/oauth/notion/callback")
-def notion_callback(code: str, state: str):
-    _validate_state(state)
-    try:
-        resp = requests.post(
-            _NOTION_TOKEN_URL,
-            json={
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": f"{settings.base_url}/oauth/notion/callback",
-            },
-            auth=(settings.notion_client_id, settings.notion_client_secret),
-            timeout=15,
-        )
-        resp.raise_for_status()
-        tokens = resp.json()
-    except Exception:
-        return HTMLResponse(_POPUP_FAIL_HTML.format(provider="notion"))
-    set_session_value(state, "notion_tokens", tokens)
-    verified = _verify_notion(tokens.get("access_token", ""))
-    return HTMLResponse(_POPUP_HTML.format(
-        provider="notion",
-        verified="true" if verified else "false",
-    ))
-
-
 @router.get("/api/session/{session_id}/tokens")
 def session_tokens(session_id: str):
     return {
@@ -146,19 +104,3 @@ def _verify_google(access_token: str) -> bool:
         return False
 
 
-def _verify_notion(access_token: str) -> bool:
-    """Test query: query shared Notion DB for 1 row — confirms DB access works."""
-    try:
-        resp = requests.post(
-            f"https://api.notion.com/v1/databases/{settings.notion_database_id}/query",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Notion-Version": "2022-06-28",
-                "Content-Type": "application/json",
-            },
-            json={"page_size": 1},
-            timeout=10,
-        )
-        return resp.status_code == 200
-    except Exception:
-        return False
