@@ -3,103 +3,206 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Entropy — Building Your System</title>
+  <title>Entropy — Building your system</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            charcoal: '#2B2D42',
-            sage: '#4A6B5C',
-            cream: '#FAF7F2',
-            pearl: '#F8F9FA',
+            paper:'#F2EFE7', stone:'#EAE6DA', ink:'#14161D', 'ink-2':'#2A2D38',
+            clay:'#C46A3F', 'clay-dark':'#A85530', sage:'#3D5A4B', amber:'#D9A441',
+            cream:'#F2EFE7', charcoal:'#14161D', pearl:'#EAE6DA'
           },
           fontFamily: {
-            display: ['Space Grotesk', 'sans-serif'],
-            body: ['Inter', 'sans-serif'],
+            display:['"Space Grotesk"','sans-serif'], body:['Inter','sans-serif'],
+            serif:['"Instrument Serif"','serif'], mono:['"JetBrains Mono"','monospace']
           }
         }
       }
     }
   </script>
+  <style>
+    @keyframes pulse-clay { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+    .pulse-clay { animation: pulse-clay 1.4s ease-in-out infinite; }
+    @keyframes draw-edge { from { stroke-dashoffset: 200; } to { stroke-dashoffset: 0; } }
+    .edge-live { stroke-dasharray: 200; animation: draw-edge 2s ease-out forwards; }
+    .step-row[data-status="done"] .step-icon { background:#3D5A4B; color:#F2EFE7; }
+    .step-row[data-status="done"] .step-label { color:rgba(20,22,29,0.65); }
+    .step-row[data-status="cur"]  .step-icon { background:#C46A3F; color:#F2EFE7; }
+    .step-row[data-status="cur"]  .step-label { color:#14161D; font-weight:600; }
+    .step-row[data-status="cur"]  .step-icon { animation: pulse-clay 1.4s ease-in-out infinite; }
+    .step-row[data-status="idle"] .step-icon { background:transparent; color:rgba(20,22,29,0.35); border:1px solid rgba(20,22,29,0.18); }
+    .step-row[data-status="idle"] .step-label { color:rgba(20,22,29,0.4); }
+  </style>
 </head>
-<body class="bg-cream text-charcoal font-body">
+<body class="bg-paper text-ink font-body antialiased">
 
-  <header class="border-b border-charcoal/10 bg-cream/80 backdrop-blur-sm sticky top-0 z-10">
-    <div class="max-w-4xl mx-auto px-6 py-4">
-      <svg viewBox="0 0 120 28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Entropy">
-        <circle cx="8" cy="14" r="3" fill="#4A6B5C"/>
-        <circle cx="18" cy="7" r="2" fill="#2B2D42"/>
-        <circle cx="18" cy="21" r="2.5" fill="#2B2D42"/>
-        <circle cx="28" cy="14" r="1.5" fill="#4A6B5C" opacity=".6"/>
-        <line x1="8" y1="14" x2="18" y2="7" stroke="#2B2D42" stroke-width="1.2" opacity=".3"/>
-        <line x1="8" y1="14" x2="18" y2="21" stroke="#2B2D42" stroke-width="1.2" opacity=".3"/>
-        <line x1="18" y1="7" x2="28" y2="14" stroke="#4A6B5C" stroke-width="1" opacity=".3"/>
-        <line x1="18" y1="21" x2="28" y2="14" stroke="#4A6B5C" stroke-width="1" opacity=".3"/>
-        <text x="36" y="19" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="16" fill="#2B2D42">entropy</text>
-      </svg>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="mark-h" viewBox="0 0 180 36">
+        <circle cx="6"  cy="20" r="2"   fill="currentColor"/>
+        <circle cx="14" cy="9"  r="1.6" fill="currentColor"/>
+        <circle cx="14" cy="28" r="1.8" fill="currentColor"/>
+        <circle cx="22" cy="18" r="3.4" fill="#C46A3F"/>
+        <circle cx="30" cy="6"  r="1.4" fill="currentColor"/>
+        <circle cx="32" cy="26" r="1.6" fill="currentColor"/>
+        <circle cx="38" cy="14" r="1.4" fill="currentColor" opacity=".65"/>
+        <circle cx="40" cy="30" r="1.2" fill="currentColor" opacity=".5"/>
+        <g stroke="currentColor" stroke-width=".8" opacity=".4" fill="none">
+          <line x1="6"  y1="20" x2="14" y2="9"/><line x1="6"  y1="20" x2="14" y2="28"/>
+          <line x1="14" y1="9"  x2="22" y2="18"/><line x1="14" y1="28" x2="22" y2="18"/>
+          <line x1="22" y1="18" x2="30" y2="6"/><line x1="22" y1="18" x2="32" y2="26"/>
+          <line x1="22" y1="18" x2="38" y2="14"/><line x1="32" y1="26" x2="40" y2="30"/>
+          <line x1="30" y1="6"  x2="38" y2="14"/>
+        </g>
+        <text x="54" y="25" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="20" letter-spacing="-.5" fill="currentColor">entropy</text>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Header -->
+  <header class="border-b border-ink/10 bg-paper/85 backdrop-blur-sm sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/"><svg class="text-ink h-7" viewBox="0 0 180 36" width="160"><use href="#mark-h"/></svg></a>
+      <div class="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-ink/55">
+        <span class="w-1.5 h-1.5 rounded-full bg-clay pulse-clay"></span>
+        <span id="header-status">Building</span>
+      </div>
     </div>
   </header>
 
-<div class="max-w-2xl mx-auto px-6 py-16">
+  <div class="max-w-6xl mx-auto px-6 py-12 grid lg:grid-cols-[1.1fr_0.9fr] gap-12">
 
-  <div class="text-center mb-12">
-    <h1 class="font-display text-3xl font-bold text-charcoal mb-2">Building your system</h1>
-    <p class="text-charcoal/50" id="status-subtitle">Processing your data — this takes about 2 hours</p>
-  </div>
+    <!-- LEFT: Status -->
+    <div>
+      <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-clay-dark mb-4">Job in progress</p>
+      <h1 class="font-display text-5xl font-bold tracking-tight leading-[1.02] mb-3">
+        Building your<br>
+        <span class="font-serif italic font-normal text-clay-dark">second brain.</span>
+      </h1>
+      <p id="status-subtitle" class="text-ink/60 text-lg mb-10">Reading your accounts, weaving the graph. About 2 hours.</p>
 
-  <div class="bg-white rounded-2xl border border-charcoal/10 p-6 mb-6">
-    <div class="flex justify-between text-sm text-charcoal/50 mb-2">
-      <span id="current-step-label">Starting...</span>
-      <span id="progress-pct">0%</span>
+      <!-- Progress card -->
+      <div class="bg-white rounded-2xl border border-ink/10 p-7 mb-6">
+        <div class="flex justify-between items-baseline mb-3">
+          <div>
+            <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Current phase</p>
+            <p id="current-step-label" class="font-display text-xl font-semibold">Starting...</p>
+          </div>
+          <div class="text-right">
+            <p id="progress-pct" class="font-display text-3xl font-bold tabular-nums">0%</p>
+            <p id="eta" class="text-xs text-ink/45 font-mono">~2h remaining</p>
+          </div>
+        </div>
+        <div class="w-full bg-ink/8 rounded-full h-1.5 mb-6">
+          <div id="progress-bar" class="bg-clay h-1.5 rounded-full transition-all duration-700" style="width:0%"></div>
+        </div>
+        <div id="steps-list" class="space-y-1 border-t border-ink/8 pt-5"></div>
+      </div>
+
+      <!-- Gaps card -->
+      <div id="gaps-section" class="hidden bg-amber/10 border border-amber/40 rounded-2xl p-6 mb-6">
+        <div class="flex items-start gap-3 mb-4">
+          <div class="w-8 h-8 rounded-full bg-amber/25 flex items-center justify-center flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v8m0 3v2" stroke="#A8770B" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <h2 class="font-display text-lg font-semibold text-ink">A few things could make your vault stronger</h2>
+            <p class="text-sm text-ink/65 mt-1">Upload these now to fill gaps — or skip and the system will proceed.</p>
+          </div>
+        </div>
+        <div id="gaps-list" class="space-y-3"></div>
+      </div>
+
+      <!-- Download card -->
+      <div id="download-section" class="hidden bg-ink text-paper rounded-2xl p-7 mb-6">
+        <p class="font-mono text-[10px] uppercase tracking-[0.22em] text-clay mb-3">Complete</p>
+        <h2 class="font-display text-2xl font-bold mb-2">Your vault is ready.</h2>
+        <p class="text-paper/60 text-sm mb-6">Download your vault and Claude settings, then follow the setup guide.</p>
+        <div class="space-y-2.5">
+          <a id="download-vault" href="#" class="flex items-center justify-between bg-clay text-paper rounded-xl px-5 py-3.5 hover:bg-clay-dark transition font-display font-semibold">
+            <span>Download entropy-vault.zip</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v10m0 0l-4-4m4 4l4-4M2 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a id="download-settings" href="#" class="flex items-center justify-between bg-paper/8 border border-paper/15 text-paper rounded-xl px-5 py-3.5 hover:bg-paper/12 transition font-display font-medium">
+            <span>Download claude_settings.json</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v10m0 0l-4-4m4 4l4-4M2 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+        <div class="mt-7 border-t border-paper/15 pt-6">
+          <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/50 mb-4">Setup · 4 steps</p>
+          <ol class="space-y-3 text-sm text-paper/75">
+            <li class="flex gap-3"><span class="font-mono text-clay flex-shrink-0">01</span><span>Install Obsidian (obsidian.md). Unzip the vault and open the folder.</span></li>
+            <li class="flex gap-3"><span class="font-mono text-clay flex-shrink-0">02</span><span>Install Claude Desktop (claude.ai/download). Place <code class="font-mono text-xs bg-paper/10 px-1.5 py-0.5 rounded">claude_settings.json</code> in <code class="font-mono text-xs bg-paper/10 px-1.5 py-0.5 rounded">~/Library/Application Support/Claude/</code> (Mac) or <code class="font-mono text-xs bg-paper/10 px-1.5 py-0.5 rounded">%APPDATA%\Claude\</code> (Windows).</span></li>
+            <li class="flex gap-3"><span class="font-mono text-clay flex-shrink-0">03</span><span>Open Claude Desktop → Settings → Connections → Install Notion.</span></li>
+            <li class="flex gap-3"><span class="font-mono text-clay flex-shrink-0">04</span><span>Ask: "What's the state of my portfolio?" — you're live.</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="error-section" class="hidden bg-red-50 border border-red-200 rounded-2xl p-6 mb-6">
+        <h2 class="font-display text-lg font-semibold text-red-900 mb-2">Something went wrong</h2>
+        <p id="error-message" class="text-sm text-red-800 font-mono bg-red-100/60 p-3 rounded-lg"></p>
+        <p class="text-sm text-ink/55 mt-3">Please contact support or try starting over.</p>
+      </div>
+
+      <p class="text-xs text-ink/45 text-center font-mono uppercase tracking-[0.12em]">Bookmark this page · Download link valid for 7 days</p>
     </div>
-    <div class="w-full bg-charcoal/10 rounded-full h-2 mb-4">
-      <div id="progress-bar" class="bg-sage h-2 rounded-full transition-all duration-500" style="width:0%"></div>
+
+    <!-- RIGHT: Live graph -->
+    <div class="lg:sticky lg:top-24 h-fit">
+      <div class="bg-white rounded-2xl border border-ink/10 p-6">
+        <div class="flex items-center justify-between mb-5">
+          <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50">Live graph</p>
+          <div class="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.12em] text-ink/55">
+            <span class="w-1.5 h-1.5 rounded-full bg-clay pulse-clay"></span>
+            <span id="graph-status">Weaving</span>
+          </div>
+        </div>
+
+        <div class="relative aspect-square">
+          <svg viewBox="0 0 400 400" class="w-full h-full" id="live-graph">
+            <defs>
+              <radialGradient id="halo2" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#C46A3F" stop-opacity=".15"/>
+                <stop offset="60%" stop-color="#C46A3F" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="200" cy="200" r="180" fill="url(#halo2)"/>
+
+            <!-- Edges (populated by JS based on step) -->
+            <g id="g-edges" stroke="#14161D" stroke-width="1" fill="none"></g>
+
+            <!-- Center anchor (always shown) -->
+            <circle cx="200" cy="200" r="14" fill="#C46A3F"/>
+
+            <!-- Nodes (filled in as steps complete) -->
+            <g id="g-nodes"></g>
+
+            <!-- Labels -->
+            <g font-family="JetBrains Mono, monospace" font-size="9" fill="#14161D" id="g-labels"></g>
+          </svg>
+        </div>
+
+        <div class="mt-5 pt-5 border-t border-ink/8 grid grid-cols-2 gap-4">
+          <div>
+            <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Nodes</p>
+            <p class="font-display text-2xl font-bold tabular-nums" id="node-count">0<span class="text-ink/30 text-base font-normal"> / 8</span></p>
+          </div>
+          <div>
+            <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Edges</p>
+            <p class="font-display text-2xl font-bold tabular-nums" id="edge-count">0<span class="text-ink/30 text-base font-normal"> / 12</span></p>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="steps-list" class="space-y-2"></div>
+
   </div>
-
-  <div id="gaps-section" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
-    <h2 class="font-display text-lg font-semibold text-amber-800 mb-1">A few things could make your vault stronger</h2>
-    <p class="text-sm text-amber-700 mb-4">Upload these now to fill gaps — or skip and the system will proceed.</p>
-    <div id="gaps-list" class="space-y-4"></div>
-  </div>
-
-  <div id="download-section" class="hidden bg-sage/8 border border-sage/20 rounded-2xl p-6 mb-6">
-    <h2 class="font-display text-xl font-bold text-charcoal mb-2">Your vault is ready</h2>
-    <p class="text-charcoal/55 text-sm mb-4">Download your vault and Claude settings, then follow the setup guide.</p>
-    <div class="space-y-3">
-      <a id="download-vault" href="#" class="flex items-center justify-between bg-charcoal text-cream rounded-xl px-5 py-3 hover:bg-charcoal/85 transition font-display font-medium">
-        <span>Download entropy-vault.zip</span><span>&darr;</span>
-      </a>
-      <a id="download-settings" href="#" class="flex items-center justify-between bg-white border-2 border-charcoal/20 text-charcoal rounded-xl px-5 py-3 hover:border-charcoal/40 transition font-display font-medium">
-        <span>Download claude_settings.json</span><span>&darr;</span>
-      </a>
-    </div>
-    <div class="mt-6 border-t border-charcoal/10 pt-5">
-      <h3 class="font-display font-semibold mb-3">Setup (4 steps)</h3>
-      <ol class="space-y-3 text-sm text-charcoal/60 list-decimal list-inside">
-        <li>Install Obsidian (obsidian.md). Unzip entropy-vault.zip and open the folder as a vault.</li>
-        <li>Install Claude Desktop (claude.ai/download). Place claude_settings.json in ~/Library/Application Support/Claude/ (Mac) or %APPDATA%\Claude\ (Windows).</li>
-        <li>Open Claude Desktop → Settings → Connections → Install Notion.</li>
-        <li>Ask: "What's the state of my portfolio?" — you're live.</li>
-      </ol>
-    </div>
-  </div>
-
-  <div id="error-section" class="hidden bg-red-50 border border-red-200 rounded-2xl p-6 mb-6">
-    <h2 class="font-display text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
-    <p id="error-message" class="text-sm text-red-700 font-mono"></p>
-    <p class="text-sm text-charcoal/45 mt-3">Please contact support or try starting over.</p>
-  </div>
-
-  <p class="text-xs text-charcoal/35 text-center">Bookmark this page — your download link is valid for 7 days.</p>
-
-</div>
 
 <script>
 var JOB_ID = {{ job_id | tojson }};
@@ -112,33 +215,115 @@ var STEP_LABELS = [
   'Pulling read.ai transcripts',
   'Assembling vault'
 ];
+
+// Map each step → the graph nodes/edges it lights up
+var NODES = [
+  // [step lit at, cx, cy, r, label, labelX, labelY]
+  [0, 160, 340, 4, 'NOTES',      168, 356],
+  [1, 280, 320, 5, 'BOOKS',      288, 338],
+  [1, 340, 240, 5, 'FRAMEWORKS', 348, 244],
+  [2,  60, 200, 4, 'PROFILE',     20, 194],
+  [3, 320, 100, 7, 'ACCOUNTS',   328,  92],
+  [3, 220,  70, 5, 'GOALS',      228,  64],
+  [4,  90, 120, 6, 'EMAIL',       98, 112],
+  [5,  80, 290, 6, 'MEETINGS',    40, 284]
+];
+var EDGES = [
+  [0, 160, 340, 200, 200],
+  [1, 280, 320, 200, 200],
+  [1, 340, 240, 200, 200],
+  [1, 280, 320, 340, 240],
+  [2,  60, 200, 200, 200],
+  [3, 320, 100, 200, 200],
+  [3, 220,  70, 200, 200],
+  [3, 220,  70,  90, 120],
+  [4,  90, 120, 200, 200],
+  [4,  90, 120, 220,  70],
+  [5,  80, 290, 200, 200],
+  [5,  80, 290, 160, 340]
+];
+
 var pollingInterval;
 var gapsShown = false;
+var renderedNodes = new Set();
+var renderedEdges = new Set();
 
 function renderStepsList(stepIndex, status) {
   var list = document.getElementById('steps-list');
   while (list.firstChild) { list.removeChild(list.firstChild); }
   STEP_LABELS.forEach(function(label, i) {
     var row = document.createElement('div');
-    row.className = 'flex gap-3 text-sm';
+    row.className = 'step-row flex items-center gap-3 py-1.5';
+    var iconState;
+    if (i < stepIndex || status === 'complete') iconState = 'done';
+    else if (i === stepIndex && status !== 'error' && status !== 'complete') iconState = 'cur';
+    else iconState = 'idle';
+    row.dataset.status = iconState;
+
     var icon = document.createElement('span');
-    icon.className = 'w-4 flex-shrink-0 font-display font-semibold';
+    icon.className = 'step-icon w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono flex-shrink-0';
+    if (iconState === 'done') icon.textContent = '✓';
+    else if (iconState === 'cur') icon.textContent = (i+1).toString().padStart(2,'0').slice(-2);
+    else icon.textContent = (i+1).toString().padStart(2,'0').slice(-2);
+
     var text = document.createElement('span');
-    if (i < stepIndex || status === 'complete') {
-      icon.textContent = '✓';
-      row.classList.add('text-sage');
-    } else if (i === stepIndex && status === 'processing') {
-      icon.textContent = '→';
-      row.classList.add('text-charcoal', 'font-medium');
-    } else {
-      icon.textContent = '·';
-      row.classList.add('text-charcoal/30');
-    }
+    text.className = 'step-label text-sm';
     text.textContent = label;
+
     row.appendChild(icon);
     row.appendChild(text);
     list.appendChild(row);
   });
+}
+
+function renderGraph(stepIndex, status) {
+  var maxStep = (status === 'complete') ? STEP_LABELS.length : stepIndex;
+  var gNodes = document.getElementById('g-nodes');
+  var gEdges = document.getElementById('g-edges');
+  var gLabels = document.getElementById('g-labels');
+
+  // Add nodes
+  NODES.forEach(function(n, i) {
+    if (n[0] <= maxStep && !renderedNodes.has(i)) {
+      var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', n[1]); c.setAttribute('cy', n[2]); c.setAttribute('r', n[3]);
+      c.setAttribute('fill', '#14161D');
+      c.style.opacity = '0';
+      c.style.transition = 'opacity .6s ease';
+      gNodes.appendChild(c);
+      setTimeout(function(){ c.style.opacity = '1'; }, 30);
+
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', n[5]); t.setAttribute('y', n[6]);
+      t.setAttribute('opacity', '0');
+      t.style.transition = 'opacity .6s ease .2s';
+      t.style.fill = '#14161D';
+      t.textContent = n[4];
+      gLabels.appendChild(t);
+      setTimeout(function(){ t.setAttribute('opacity', '.5'); }, 50);
+
+      renderedNodes.add(i);
+    }
+  });
+
+  // Add edges
+  EDGES.forEach(function(e, i) {
+    if (e[0] <= maxStep && !renderedEdges.has(i)) {
+      var l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', e[1]); l.setAttribute('y1', e[2]);
+      l.setAttribute('x2', e[3]); l.setAttribute('y2', e[4]);
+      l.setAttribute('stroke', '#14161D');
+      l.setAttribute('opacity', '0');
+      l.classList.add('edge-live');
+      l.style.transition = 'opacity .8s ease';
+      gEdges.appendChild(l);
+      setTimeout(function(){ l.setAttribute('opacity', '.2'); }, 100);
+      renderedEdges.add(i);
+    }
+  });
+
+  document.getElementById('node-count').innerHTML = renderedNodes.size + '<span class="text-ink/30 text-base font-normal"> / 8</span>';
+  document.getElementById('edge-count').innerHTML = renderedEdges.size + '<span class="text-ink/30 text-base font-normal"> / 12</span>';
 }
 
 function showGaps(gaps) {
@@ -148,14 +333,14 @@ function showGaps(gaps) {
   var list = document.getElementById('gaps-list');
   gaps.forEach(function(gap, i) {
     var div = document.createElement('div');
-    div.className = 'border border-amber-200 rounded-lg p-3 bg-white';
+    div.className = 'border border-amber/30 rounded-lg p-4 bg-white';
 
     var cat = document.createElement('p');
-    cat.className = 'text-sm font-display font-medium text-amber-800 mb-1';
+    cat.className = 'font-mono text-[10px] uppercase tracking-[0.18em] text-clay-dark mb-1.5';
     cat.textContent = gap.category;
 
     var prompt = document.createElement('p');
-    prompt.className = 'text-sm text-charcoal/60 mb-2';
+    prompt.className = 'text-sm text-ink/70 mb-3';
     prompt.textContent = gap.prompt;
 
     div.appendChild(cat);
@@ -164,9 +349,9 @@ function showGaps(gaps) {
     if (gap.upload_accepted) {
       var input = document.createElement('input');
       input.type = 'file';
-      input.className = 'text-sm';
+      input.className = 'block w-full text-sm text-ink/65 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-ink/10 file:text-ink file:font-medium file:cursor-pointer';
       var statusSpan = document.createElement('span');
-      statusSpan.className = 'text-xs text-charcoal/40 block mt-1';
+      statusSpan.className = 'text-xs text-ink/50 block mt-2 font-mono';
       statusSpan.id = 'gap-status-' + i;
       input.addEventListener('change', (function(inp, span) {
         return function() { uploadGapFile(inp, JOB_ID, span); };
@@ -190,9 +375,11 @@ async function uploadGapFile(inputEl, jobId, statusEl) {
     });
     var data = await resp.json();
     await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
-    statusEl.textContent = 'Uploaded';
+    statusEl.textContent = 'Uploaded ✓';
+    statusEl.className = 'text-xs text-sage block mt-2 font-mono font-medium';
   } catch(e) {
     statusEl.textContent = 'Upload failed';
+    statusEl.className = 'text-xs text-red-700 block mt-2 font-mono';
   }
 }
 
@@ -212,12 +399,16 @@ async function pollStatus() {
     document.getElementById('current-step-label').textContent = stepLabel;
 
     renderStepsList(state.step_index, state.status);
+    renderGraph(state.step_index, state.status);
 
     if (state.gaps && state.gaps.length > 0) { showGaps(state.gaps); }
 
     if (state.status === 'complete') {
       clearInterval(pollingInterval);
       document.getElementById('status-subtitle').textContent = 'Your vault is ready to download.';
+      document.getElementById('header-status').textContent = 'Complete';
+      document.getElementById('graph-status').textContent = 'Complete';
+      document.getElementById('eta').textContent = 'Done';
       document.getElementById('download-section').classList.remove('hidden');
       if (state.vault_download_url) { document.getElementById('download-vault').href = state.vault_download_url; }
       if (state.claude_settings_download_url) {
@@ -230,6 +421,8 @@ async function pollStatus() {
 
     if (state.status === 'error') {
       clearInterval(pollingInterval);
+      document.getElementById('header-status').textContent = 'Error';
+      document.getElementById('graph-status').textContent = 'Halted';
       document.getElementById('error-section').classList.remove('hidden');
       document.getElementById('error-message').textContent = state.error || 'Unknown error';
     }

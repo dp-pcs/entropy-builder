@@ -3,86 +3,302 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Entropy — Your Intelligence System</title>
+  <title>Entropy — Your intelligence, as a graph</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            charcoal: '#2B2D42',
-            sage: '#4A6B5C',
-            cream: '#FAF7F2',
-            pearl: '#F8F9FA',
+            paper:'#F2EFE7', stone:'#EAE6DA', ink:'#14161D', 'ink-2':'#2A2D38',
+            clay:'#C46A3F', 'clay-dark':'#A85530', sage:'#3D5A4B', amber:'#D9A441',
+            cream:'#F2EFE7', charcoal:'#14161D', pearl:'#EAE6DA'
           },
           fontFamily: {
-            display: ['Space Grotesk', 'sans-serif'],
-            body: ['Inter', 'sans-serif'],
+            display:['"Space Grotesk"','sans-serif'], body:['Inter','sans-serif'],
+            serif:['"Instrument Serif"','serif'], mono:['"JetBrains Mono"','monospace']
           }
         }
       }
     }
   </script>
+  <style>
+    body { font-feature-settings: "ss01","cv11"; }
+    .grain {
+      background-image: radial-gradient(rgba(20,22,29,0.025) 1px, transparent 1px);
+      background-size: 3px 3px;
+    }
+  </style>
 </head>
-<body class="bg-cream text-charcoal font-body">
+<body class="bg-paper text-ink font-body antialiased">
 
-  <header class="border-b border-charcoal/10 bg-cream/80 backdrop-blur-sm sticky top-0 z-10">
-    <div class="max-w-4xl mx-auto px-6 py-4">
-      <svg viewBox="0 0 120 28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Entropy">
-        <circle cx="8" cy="14" r="3" fill="#4A6B5C"/>
-        <circle cx="18" cy="7" r="2" fill="#2B2D42"/>
-        <circle cx="18" cy="21" r="2.5" fill="#2B2D42"/>
-        <circle cx="28" cy="14" r="1.5" fill="#4A6B5C" opacity=".6"/>
-        <line x1="8" y1="14" x2="18" y2="7" stroke="#2B2D42" stroke-width="1.2" opacity=".3"/>
-        <line x1="8" y1="14" x2="18" y2="21" stroke="#2B2D42" stroke-width="1.2" opacity=".3"/>
-        <line x1="18" y1="7" x2="28" y2="14" stroke="#4A6B5C" stroke-width="1" opacity=".3"/>
-        <line x1="18" y1="21" x2="28" y2="14" stroke="#4A6B5C" stroke-width="1" opacity=".3"/>
-        <text x="36" y="19" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="16" fill="#2B2D42">entropy</text>
-      </svg>
+  <!-- Reusable mark definitions -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- Horizontal lockup: 8-node constellation + wordmark -->
+      <symbol id="mark-h" viewBox="0 0 180 36">
+        <g>
+          <circle cx="6"  cy="20" r="2"   fill="currentColor"/>
+          <circle cx="14" cy="9"  r="1.6" fill="currentColor"/>
+          <circle cx="14" cy="28" r="1.8" fill="currentColor"/>
+          <circle cx="22" cy="18" r="3.4" fill="#C46A3F"/>
+          <circle cx="30" cy="6"  r="1.4" fill="currentColor"/>
+          <circle cx="32" cy="26" r="1.6" fill="currentColor"/>
+          <circle cx="38" cy="14" r="1.4" fill="currentColor" opacity=".65"/>
+          <circle cx="40" cy="30" r="1.2" fill="currentColor" opacity=".5"/>
+          <g stroke="currentColor" stroke-width=".8" opacity=".4" fill="none">
+            <line x1="6"  y1="20" x2="14" y2="9"/>
+            <line x1="6"  y1="20" x2="14" y2="28"/>
+            <line x1="14" y1="9"  x2="22" y2="18"/>
+            <line x1="14" y1="28" x2="22" y2="18"/>
+            <line x1="22" y1="18" x2="30" y2="6"/>
+            <line x1="22" y1="18" x2="32" y2="26"/>
+            <line x1="22" y1="18" x2="38" y2="14"/>
+            <line x1="32" y1="26" x2="40" y2="30"/>
+            <line x1="30" y1="6"  x2="38" y2="14"/>
+          </g>
+          <text x="54" y="25" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="20" letter-spacing="-.5" fill="currentColor">entropy</text>
+        </g>
+      </symbol>
+      <!-- Icon only -->
+      <symbol id="mark-icon" viewBox="0 0 48 36">
+        <circle cx="6"  cy="20" r="2"   fill="currentColor"/>
+        <circle cx="14" cy="9"  r="1.6" fill="currentColor"/>
+        <circle cx="14" cy="28" r="1.8" fill="currentColor"/>
+        <circle cx="22" cy="18" r="3.4" fill="#C46A3F"/>
+        <circle cx="30" cy="6"  r="1.4" fill="currentColor"/>
+        <circle cx="32" cy="26" r="1.6" fill="currentColor"/>
+        <circle cx="38" cy="14" r="1.4" fill="currentColor" opacity=".65"/>
+        <circle cx="40" cy="30" r="1.2" fill="currentColor" opacity=".5"/>
+        <g stroke="currentColor" stroke-width=".8" opacity=".4" fill="none">
+          <line x1="6"  y1="20" x2="14" y2="9"/><line x1="6"  y1="20" x2="14" y2="28"/>
+          <line x1="14" y1="9"  x2="22" y2="18"/><line x1="14" y1="28" x2="22" y2="18"/>
+          <line x1="22" y1="18" x2="30" y2="6"/><line x1="22" y1="18" x2="32" y2="26"/>
+          <line x1="22" y1="18" x2="38" y2="14"/><line x1="32" y1="26" x2="40" y2="30"/>
+          <line x1="30" y1="6"  x2="38" y2="14"/>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Header -->
+  <header class="border-b border-ink/10 bg-paper/85 backdrop-blur-sm sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <svg class="text-ink h-7" viewBox="0 0 180 36" width="160"><use href="#mark-h"/></svg>
+      <div class="hidden sm:flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-ink/55">
+        <span class="w-1.5 h-1.5 rounded-full bg-clay"></span>
+        <span>Internal · beta</span>
+      </div>
     </div>
   </header>
 
-  <div class="max-w-3xl mx-auto px-6 py-20 text-center">
-    <h1 class="font-display text-4xl font-bold text-charcoal mb-4 leading-tight">Your intelligence system.<br>Built from what you already know.</h1>
-    <p class="text-lg text-charcoal/60 mb-8">Entropy reads your notes, your emails, your meetings — and builds a connected knowledge graph you can query through Claude.</p>
-    <a href="/wizard" class="inline-block bg-sage text-white text-lg font-semibold px-8 py-4 rounded-xl hover:bg-[#3d5a4c] transition font-display">Build My System</a>
-  </div>
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 grain pointer-events-none"></div>
+    <div class="max-w-6xl mx-auto px-6 pt-20 pb-24 grid lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center relative">
 
-  <div class="max-w-3xl mx-auto px-6 pb-20">
-    <h2 class="font-display text-2xl font-bold text-center mb-10">How it works</h2>
-    <div class="grid grid-cols-3 gap-8 text-center">
       <div>
-        <div class="w-10 h-10 rounded-full bg-charcoal text-cream font-display font-bold text-lg flex items-center justify-center mx-auto mb-4">1</div>
-        <h3 class="font-display font-semibold mb-2">Answer questions</h3>
-        <p class="text-sm text-charcoal/55">~30 minutes. Tell us how you think, what you've read, and how you work.</p>
+        <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-ink/55 mb-6">A second brain, wired to your work</p>
+        <h1 class="font-display text-[64px] leading-[0.95] font-bold tracking-[-0.025em] mb-7">
+          Your intelligence,<br>
+          <span class="font-serif italic font-normal text-clay-dark">as a graph.</span>
+        </h1>
+        <p class="text-lg text-ink/65 max-w-[42ch] leading-relaxed mb-10">
+          Entropy reads your accounts, your meetings, your notes — and builds a connected vault you can query through Claude. Every account, every thread, every framework, one place.
+        </p>
+        <div class="flex items-center gap-5">
+          <a href="/wizard" class="inline-flex items-center gap-2 bg-ink text-paper px-7 py-4 rounded-full font-display font-semibold text-base hover:bg-ink-2 transition group">
+            Build my system
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="group-hover:translate-x-0.5 transition-transform">
+              <path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </a>
+          <span class="text-sm text-ink/50">~30 min setup · ~2 hour build</span>
+        </div>
       </div>
-      <div>
-        <div class="w-10 h-10 rounded-full bg-charcoal text-cream font-display font-bold text-lg flex items-center justify-center mx-auto mb-4">2</div>
-        <h3 class="font-display font-semibold mb-2">We build it</h3>
-        <p class="text-sm text-charcoal/55">~2 hours. AI reads everything and builds your personalized knowledge graph.</p>
-      </div>
-      <div>
-        <div class="w-10 h-10 rounded-full bg-charcoal text-cream font-display font-bold text-lg flex items-center justify-center mx-auto mb-4">3</div>
-        <h3 class="font-display font-semibold mb-2">You're live</h3>
-        <p class="text-sm text-charcoal/55">Download your vault, open in Obsidian. Claude Desktop is pre-configured.</p>
+
+      <!-- Animated constellation -->
+      <div class="relative aspect-square max-w-[480px] mx-auto w-full">
+        <svg viewBox="0 0 400 400" class="w-full h-full">
+          <defs>
+            <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#C46A3F" stop-opacity=".18"/>
+              <stop offset="60%" stop-color="#C46A3F" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="200" cy="200" r="180" fill="url(#halo)"/>
+
+          <!-- Edges -->
+          <g stroke="#14161D" stroke-width="1" opacity=".18" fill="none">
+            <line x1="90"  y1="120" x2="200" y2="200"/>
+            <line x1="320" y1="100" x2="200" y2="200"/>
+            <line x1="340" y1="240" x2="200" y2="200"/>
+            <line x1="80"  y1="290" x2="200" y2="200"/>
+            <line x1="160" y1="340" x2="200" y2="200"/>
+            <line x1="280" y1="320" x2="200" y2="200"/>
+            <line x1="60"  y1="200" x2="200" y2="200"/>
+            <line x1="220" y1="70"  x2="200" y2="200"/>
+            <line x1="90"  y1="120" x2="220" y2="70"/>
+            <line x1="320" y1="100" x2="340" y2="240"/>
+            <line x1="80"  y1="290" x2="160" y2="340"/>
+            <line x1="280" y1="320" x2="340" y2="240"/>
+          </g>
+
+          <!-- Center clay anchor -->
+          <circle cx="200" cy="200" r="14" fill="#C46A3F"/>
+          <circle cx="200" cy="200" r="14" fill="none" stroke="#C46A3F" stroke-width="1" opacity=".4">
+            <animate attributeName="r" values="14;28;14" dur="3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".4;0;.4" dur="3s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- Satellite nodes -->
+          <g fill="#14161D">
+            <circle cx="90"  cy="120" r="6"/>
+            <circle cx="320" cy="100" r="7"/>
+            <circle cx="340" cy="240" r="5"/>
+            <circle cx="80"  cy="290" r="6"/>
+            <circle cx="160" cy="340" r="4"/>
+            <circle cx="280" cy="320" r="5"/>
+            <circle cx="60"  cy="200" r="4"/>
+            <circle cx="220" cy="70"  r="5"/>
+          </g>
+
+          <!-- Pulse dot traveling an edge -->
+          <circle r="3" fill="#C46A3F">
+            <animateMotion dur="4s" repeatCount="indefinite" path="M90,120 L200,200"/>
+          </circle>
+          <circle r="3" fill="#C46A3F">
+            <animateMotion dur="5s" repeatCount="indefinite" path="M320,100 L200,200"/>
+          </circle>
+          <circle r="3" fill="#C46A3F">
+            <animateMotion dur="6s" repeatCount="indefinite" path="M80,290 L200,200"/>
+          </circle>
+
+          <!-- Labels -->
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#14161D" opacity=".5">
+            <text x="98"  y="112">EMAIL</text>
+            <text x="328" y="92" >ACCOUNTS</text>
+            <text x="348" y="244">FRAMEWORKS</text>
+            <text x="40"  y="284">MEETINGS</text>
+            <text x="168" y="356">NOTES</text>
+            <text x="288" y="338">BOOKS</text>
+            <text x="20"  y="194">PROFILE</text>
+            <text x="228" y="64" >GOALS</text>
+          </g>
+        </svg>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="bg-pearl border-t border-charcoal/10 py-16">
-    <div class="max-w-3xl mx-auto px-6">
-      <h2 class="font-display text-xl font-bold mb-6 text-center">What it's not</h2>
-      <div class="grid grid-cols-3 gap-6 text-sm text-charcoal/60 text-center">
-        <div class="bg-cream rounded-lg p-4 border border-charcoal/10">Not a file storage system</div>
-        <div class="bg-cream rounded-lg p-4 border border-charcoal/10">Not a search tool</div>
-        <div class="bg-cream rounded-lg p-4 border border-charcoal/10">Not a CRM</div>
+  <!-- Attribute strip -->
+  <section class="border-y border-ink/10 bg-stone/40">
+    <div class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div>
+        <div class="font-display text-3xl font-bold tracking-tight">~5s</div>
+        <div class="text-xs text-ink/55 font-mono uppercase tracking-[0.15em] mt-1">Query latency</div>
       </div>
-      <p class="text-center text-charcoal/45 mt-6 text-sm">The AI doesn't store your files — it reads them, understands them, and builds a living knowledge graph.</p>
+      <div>
+        <div class="font-display text-3xl font-bold tracking-tight">16 skills</div>
+        <div class="text-xs text-ink/55 font-mono uppercase tracking-[0.15em] mt-1">Pre-installed</div>
+      </div>
+      <div>
+        <div class="font-display text-3xl font-bold tracking-tight">Obsidian</div>
+        <div class="text-xs text-ink/55 font-mono uppercase tracking-[0.15em] mt-1">Native vault</div>
+      </div>
+      <div>
+        <div class="font-display text-3xl font-bold tracking-tight">0</div>
+        <div class="text-xs text-ink/55 font-mono uppercase tracking-[0.15em] mt-1">Vendor lock-in</div>
+      </div>
     </div>
-  </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="max-w-6xl mx-auto px-6 py-24">
+    <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-16">
+      <div>
+        <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-ink/55 mb-4">How it works</p>
+        <h2 class="font-display text-4xl font-bold leading-[1.05] tracking-tight">
+          Three steps.<br>
+          <span class="font-serif italic font-normal text-clay-dark">No setup overhead.</span>
+        </h2>
+      </div>
+
+      <div class="space-y-px bg-ink/10">
+        <div class="bg-paper p-7 grid grid-cols-[auto_1fr] gap-6 items-start">
+          <span class="font-mono text-xs text-ink/45">01</span>
+          <div>
+            <h3 class="font-display text-xl font-semibold mb-2">Answer a handful of questions</h3>
+            <p class="text-ink/65 leading-relaxed">~30 minutes. The flow adapts to your answers — we ask what we need and skip what we don't. Tell us how you think, what you've read, and how you work.</p>
+          </div>
+        </div>
+        <div class="bg-paper p-7 grid grid-cols-[auto_1fr] gap-6 items-start">
+          <span class="font-mono text-xs text-ink/45">02</span>
+          <div>
+            <h3 class="font-display text-xl font-semibold mb-2">We read everything and build the graph</h3>
+            <p class="text-ink/65 leading-relaxed">~2 hours. Notion, Gmail, meetings, your notes, books, frameworks. Hub nodes for status, sentiment, pain points. Edges everywhere they should be.</p>
+          </div>
+        </div>
+        <div class="bg-paper p-7 grid grid-cols-[auto_1fr] gap-6 items-start">
+          <span class="font-mono text-xs text-ink/45">03</span>
+          <div>
+            <h3 class="font-display text-xl font-semibold mb-2">Open in Obsidian. Query through Claude.</h3>
+            <p class="text-ink/65 leading-relaxed">Download your vault, drop in Claude settings, and ask anything. Pre-wired with 16 skills for status checks, renewal prep, account research.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What it's not -->
+  <section class="bg-ink text-paper">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-paper/55 mb-4">What it isn't</p>
+      <h2 class="font-display text-3xl font-bold mb-10 max-w-2xl leading-tight">
+        Entropy isn't another tool to log into. It's <span class="font-serif italic font-normal text-clay">your data, rewired</span>.
+      </h2>
+      <div class="grid md:grid-cols-3 gap-px bg-paper/15">
+        <div class="bg-ink p-6">
+          <div class="font-mono text-xs uppercase tracking-[0.15em] text-clay mb-2">Not</div>
+          <div class="font-display text-lg font-semibold mb-1">A file storage system</div>
+          <div class="text-sm text-paper/55">Files stay where they live. The graph references them.</div>
+        </div>
+        <div class="bg-ink p-6">
+          <div class="font-mono text-xs uppercase tracking-[0.15em] text-clay mb-2">Not</div>
+          <div class="font-display text-lg font-semibold mb-1">A search tool</div>
+          <div class="text-sm text-paper/55">Search returns links. Entropy returns synthesis.</div>
+        </div>
+        <div class="bg-ink p-6">
+          <div class="font-mono text-xs uppercase tracking-[0.15em] text-clay mb-2">Not</div>
+          <div class="font-display text-lg font-semibold mb-1">A CRM</div>
+          <div class="text-sm text-paper/55">Your CRM stays. Entropy reads it and adds context.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer CTA -->
+  <section class="max-w-6xl mx-auto px-6 py-24 text-center">
+    <h2 class="font-display text-5xl font-bold tracking-tight mb-4 leading-[1.05]">
+      Ready when you are.
+    </h2>
+    <p class="text-ink/60 text-lg mb-8">~30 minutes of questions. Then go make coffee.</p>
+    <a href="/wizard" class="inline-flex items-center gap-2 bg-clay text-paper px-8 py-4 rounded-full font-display font-semibold text-base hover:bg-clay-dark transition">
+      Build my system
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </a>
+  </section>
+
+  <footer class="border-t border-ink/10">
+    <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-ink/45 font-mono uppercase tracking-[0.15em]">
+      <span>Internal · Entropy</span>
+      <span>v1 · 2026</span>
+    </div>
+  </footer>
 
 </body>
 </html>
