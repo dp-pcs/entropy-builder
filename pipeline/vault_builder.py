@@ -1,5 +1,6 @@
 import io
 import json
+import posixpath
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -14,6 +15,13 @@ _SKILLS_TO_COPY = [
 _ANALYTICS_TO_COPY = ["metrics.md", "queries.md", "schemas.md"]
 
 
+def _safe_zip_path(path: str) -> str:
+    normalized = posixpath.normpath(path.replace("\\", "/")).lstrip("/")
+    if normalized.startswith(".."):
+        raise ValueError(f"Unsafe VaultFile path rejected: {path!r}")
+    return normalized
+
+
 def build_vault(
     config: JobConfig,
     wiki_files: list[VaultFile],
@@ -26,7 +34,6 @@ def build_vault(
     buf = io.BytesIO()
     brain_name = f"{config.user_name}'s Second Brain"
     template = Path(config.entropy_template_path)
-    today = date.today().isoformat()
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         # Root files
@@ -35,7 +42,7 @@ def build_vault(
 
         # 2nd brain wiki files (rename root prefix to user's brain name)
         for vf in wiki_files:
-            dest = f"{brain_name}/{vf.path}"
+            dest = f"{brain_name}/{_safe_zip_path(vf.path)}"
             zf.writestr(dest, vf.content)
 
         # Empty folders for 2nd brain
@@ -44,11 +51,11 @@ def build_vault(
 
         # Customer files (intelligence summaries, emails, transcripts)
         for vf in customer_files:
-            zf.writestr(vf.path, vf.content)
+            zf.writestr(_safe_zip_path(vf.path), vf.content)
 
         # Hub nodes
         for vf in hub_nodes:
-            zf.writestr(vf.path, vf.content)
+            zf.writestr(_safe_zip_path(vf.path), vf.content)
 
         # Hot cache
         zf.writestr("Entropy/_hot_cache.md", generate_hot_cache(config, customers))
@@ -98,7 +105,7 @@ def generate_claude_md(config: JobConfig) -> str:
     filter_rule = (
         f"Account Manager == '{config.account_manager_name}'"
         if config.user_role != "manager"
-        else f"Account Manager IN {config.team_members}"
+        else f"Account Manager IN [{', '.join(repr(m) for m in config.team_members)}]"
     )
 
     return f"""# {config.user_name} — Entropy Intelligence System
@@ -159,9 +166,15 @@ def generate_hot_cache(config: JobConfig, customers: list[CustomerRecord]) -> st
         for c in at_risk[:5]
     )
 
+    shown = customers[:50]
+    roster_note = (
+        f"\n> Showing {len(shown)} of {len(customers)} customers — run daily scan for full roster.\n"
+        if len(customers) > 50 else ""
+    )
+
     roster_lines = "\n".join(
         f"| [[{c.name}]] | {c.product} | ${c.arr:,.0f} | {c.renewal_date} | {', '.join(c.status_tags)} |"
-        for c in customers[:50]
+        for c in shown
     )
 
     return f"""# Hot Cache — {config.user_name}
@@ -191,7 +204,7 @@ _None identified at initial import. Run daily scan to populate._
 
 | Customer | Product | ARR | Renewal | Tags |
 |----------|---------|-----|---------|------|
-{roster_lines}
+{roster_lines}{roster_note}
 
 ## Decisions Made
 
@@ -208,10 +221,15 @@ Run daily scan to populate email and transcript history.
 
 
 def _generate_env(config: JobConfig) -> str:
-    return f"""# Entropy environment — do not commit to git
+    google = config.google_credentials or {}
+    return f"""# Entropy environment — KEEP PRIVATE, do not commit to git or share
 NOTION_TOKEN={config.notion_token}
 NOTION_DATABASE_ID={config.notion_database_id}
 READAI_API_KEY={config.readai_api_key}
+GOOGLE_ACCESS_TOKEN={google.get('access_token', '')}
+GOOGLE_REFRESH_TOKEN={google.get('refresh_token', '')}
+GOOGLE_CLIENT_ID={google.get('client_id', '')}
+GOOGLE_CLIENT_SECRET={google.get('client_secret', '')}
 """
 
 
