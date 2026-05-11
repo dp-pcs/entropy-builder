@@ -15,15 +15,15 @@ _VALID_PAYLOAD = {
 
 def test_wizard_submit_returns_job_id(client, mocker):
     from webapp.session import set_session_value
-    from webapp.jobs import run_pipeline_job
     set_session_value("11111111-1111-1111-1111-111111111111", "google_tokens", {
         "access_token": "g-acc", "refresh_token": "g-ref",
     })
     set_session_value("11111111-1111-1111-1111-111111111111", "notion_tokens", {"access_token": "n-tok"})
 
-    mock_write = mocker.patch("webapp.jobs.s3.write_job_state")
-    mock_thread = mocker.patch("webapp.jobs.threading.Thread")
-    mock_thread.return_value.start = MagicMock()
+    mock_write_state = mocker.patch("webapp.jobs.s3.write_job_state")
+    mocker.patch("webapp.jobs.s3.write_job_config")
+    mock_sqs_client = MagicMock()
+    mocker.patch("webapp.jobs.boto3.client", return_value=mock_sqs_client)
     mocker.patch("webapp.main.settings.notion_database_id", "db-id")
     mocker.patch("webapp.main.settings.fireworks_api_key", "fw-key")
     mocker.patch("webapp.main.settings.entropy_template_path", "/tmp")
@@ -34,15 +34,16 @@ def test_wizard_submit_returns_job_id(client, mocker):
     assert "job_id" in data
     assert len(data["job_id"]) == 36
 
-    # Assert thread was created correctly
-    mock_thread.assert_called_once()
-    call_kwargs = mock_thread.call_args.kwargs if mock_thread.call_args.kwargs else {}
-    call_args = mock_thread.call_args.args if mock_thread.call_args.args else ()
-    assert mock_thread.return_value.start.called
+    # Assert SQS message was sent
+    mock_sqs_client.send_message.assert_called_once()
+    call_kwargs = mock_sqs_client.send_message.call_args[1]
+    import json as _json
+    body = _json.loads(call_kwargs["MessageBody"])
+    assert body["job_id"] == data["job_id"]
 
     # Assert initial S3 state shape
-    assert mock_write.call_count >= 1
-    first_write_state = mock_write.call_args_list[0][0][1]
+    assert mock_write_state.call_count >= 1
+    first_write_state = mock_write_state.call_args_list[0][0][1]
     assert first_write_state["status"] == "pending"
     assert first_write_state["step"] == "ingest"
     assert first_write_state["step_index"] == 0

@@ -136,9 +136,8 @@ def test_generate_claude_settings():
     )
     result = json.loads(generate_claude_settings(config))
     assert "mcpServers" in result
-    assert "notion" in result["mcpServers"]
+    assert "notion" not in result["mcpServers"]
     assert "gmail" in result["mcpServers"]
     assert "readai" in result["mcpServers"]
-    assert result["mcpServers"]["notion"]["env"]["NOTION_API_KEY"] == "n-tok"
     assert result["mcpServers"]["gmail"]["env"]["GMAIL_ACCESS_TOKEN"] == "g-acc"
     assert result["mcpServers"]["readai"]["env"]["READAI_API_KEY"] == "ra-key"
