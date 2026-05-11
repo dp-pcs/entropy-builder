@@ -4,8 +4,12 @@ from fastapi.responses import JSONResponse
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Entropy Onboarding")
+
+    from .oauth import router as oauth_router
+    app.include_router(oauth_router)
 
     @app.get("/health")
     def health():
