@@ -1,13 +1,30 @@
 import json
 import re
+import requests
 from datetime import date
 from notion_client import Client
 from .models import JobConfig, CustomerRecord, VaultFile
 
+_NOTION_API = "https://api.notion.com/v1"
+
+
+def _query_database(token: str, database_id: str, filter_body: dict, cursor: str | None = None) -> dict:
+    """POST /databases/{id}/query directly — notion-client SDK dropped this method."""
+    body: dict = {"filter": filter_body, "page_size": 100}
+    if cursor:
+        body["start_cursor"] = cursor
+    resp = requests.post(
+        f"{_NOTION_API}/databases/{database_id}/query",
+        headers={"Authorization": f"Bearer {token}", "Notion-Version": "2022-06-28"},
+        json=body,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
 
 def pull_customers(config: JobConfig) -> list[CustomerRecord]:
     """Query the shared Notion DB filtered by account manager name(s)."""
-    notion = Client(auth=config.notion_token)
     names = (config.team_members if config.user_role == "manager"
              else [config.account_manager_name])
 
@@ -15,13 +32,12 @@ def pull_customers(config: JobConfig) -> list[CustomerRecord]:
     for name in names:
         cursor = None
         while True:
-            kwargs = {
-                "database_id": config.notion_database_id,
-                "filter": {"property": "Account Manager", "rich_text": {"equals": name}},
-            }
-            if cursor:
-                kwargs["start_cursor"] = cursor
-            resp = notion.databases.query(**kwargs)
+            resp = _query_database(
+                config.notion_token,
+                config.notion_database_id,
+                {"property": "Account Manager", "rich_text": {"equals": name}},
+                cursor,
+            )
             for page in resp.get("results", []):
                 all_rows.append(_page_to_row(page))
             cursor = resp.get("next_cursor")
