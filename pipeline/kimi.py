@@ -1,7 +1,10 @@
 # entropy_builder/pipeline/kimi.py
 import json
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 from .models import JobConfig, VaultFile, GapItem
 
@@ -18,8 +21,9 @@ def _strip_fence(raw: str) -> str:
     return text
 
 FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
-MODEL = "accounts/fireworks/models/kimi-k2p6"
-CHUNK_SIZE = 80_000  # chars — stay under Kimi's context limit per call
+MODEL = "accounts/fireworks/models/qwen3p6-plus"
+CHUNK_SIZE = 80_000  # chars — stay under model context limit per call
+MAX_PARALLEL_CHUNKS = 4
 
 _PASS1_SYSTEM = """You are building a personal knowledge wiki ("Second Brain") for a professional.
 
@@ -176,16 +180,26 @@ def _generate_wiki_chunked(
             chunks[-1] += addition
 
     merged: dict[str, str] = {}
-    for i, chunk in enumerate(chunks):
-        prefix = "CONTINUE and EXTEND the wiki with additional content. Merge with prior output.\n\n" if i > 0 else ""
-        raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, prefix + chunk)
-        if on_chunk:
-            on_chunk(i + 1, len(chunks), tokens)
-        for vf in _parse_wiki_response(raw):
-            if vf.path in merged and vf.path != "TRAVERSAL-INDEX.md":
-                merged[vf.path] += "\n\n" + vf.content
-            else:
-                merged[vf.path] = vf.content
+    lock = threading.Lock()
+    completed = [0]
+
+    def _process(i: int, chunk: str) -> tuple[int, str, int]:
+        raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, chunk)
+        return i, raw, tokens
+
+    with ThreadPoolExecutor(max_workers=min(len(chunks), MAX_PARALLEL_CHUNKS)) as pool:
+        futures = {pool.submit(_process, i, chunk): i for i, chunk in enumerate(chunks)}
+        for future in as_completed(futures):
+            i, raw, tokens = future.result()
+            with lock:
+                completed[0] += 1
+                if on_chunk:
+                    on_chunk(completed[0], len(chunks), tokens)
+                for vf in _parse_wiki_response(raw):
+                    if vf.path in merged and vf.path != "TRAVERSAL-INDEX.md":
+                        merged[vf.path] += "\n\n" + vf.content
+                    else:
+                        merged[vf.path] = vf.content
 
     return [VaultFile(path=k, content=v) for k, v in merged.items()]
 
