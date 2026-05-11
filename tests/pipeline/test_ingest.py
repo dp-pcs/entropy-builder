@@ -68,3 +68,14 @@ def test_ingest_multiple_sources_merged():
 
 def test_ingest_empty_sources():
     assert ingest([]) == []
+
+
+def test_ingest_zip_corrupt_returns_empty():
+    sources = [{"type": "zip", "content": b"not a zip", "filename": "bad.zip"}]
+    assert ingest(sources) == []
+
+
+def test_ingest_unknown_type_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        ingest([{"type": "csv", "content": b"data", "filename": "data.csv"}])
