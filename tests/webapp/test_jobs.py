@@ -83,7 +83,9 @@ def test_run_pipeline_job_error_path(mocker):
     mocker.patch("webapp.jobs._download_s3_files", return_value=[])
     mocker.patch("webapp.jobs.ingest.ingest", side_effect=RuntimeError("ingest failed"))
 
-    run_pipeline_job("j2", _make_config(), [])
+    import pytest
+    with pytest.raises(RuntimeError, match="ingest failed"):
+        run_pipeline_job("j2", _make_config(), [])
 
     error_state = mock_write.call_args_list[-1][0][1]
     assert error_state["status"] == "error"
@@ -117,7 +119,9 @@ def test_run_pipeline_job_notion_failure(mocker):
         "readai_api_key": "ra-key", "fireworks_api_key": "fw-key",
         "interview_answers": {}, "entropy_template_path": "/tmp", "product_lines": [],
     }
-    run_pipeline_job("j3", config, [])
+    import pytest
+    with pytest.raises(RuntimeError, match="Notion API 429"):
+        run_pipeline_job("j3", config, [])
 
     error_state = mock_write.call_args_list[-1][0][1]
     assert error_state["status"] == "error"
@@ -136,9 +140,8 @@ def test_generate_claude_settings():
     )
     result = json.loads(generate_claude_settings(config))
     assert "mcpServers" in result
-    assert "notion" in result["mcpServers"]
+    assert "notion" not in result["mcpServers"]
     assert "gmail" in result["mcpServers"]
     assert "readai" in result["mcpServers"]
-    assert result["mcpServers"]["notion"]["env"]["NOTION_API_KEY"] == "n-tok"
     assert result["mcpServers"]["gmail"]["env"]["GMAIL_ACCESS_TOKEN"] == "g-acc"
     assert result["mcpServers"]["readai"]["env"]["READAI_API_KEY"] == "ra-key"

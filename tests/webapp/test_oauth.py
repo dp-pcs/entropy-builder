@@ -35,38 +35,6 @@ def test_google_oauth_callback_stores_tokens_and_closes(client, mocker):
     assert tokens["access_token"] == "acc-tok"
 
 
-def test_notion_oauth_start_redirects(client, mocker):
-    import uuid
-    valid_session_id = str(uuid.uuid4())
-    mocker.patch("webapp.oauth.settings.notion_client_id", "notion-cid")
-    mocker.patch("webapp.oauth.settings.base_url", "http://localhost:8000")
-    resp = client.get(f"/oauth/notion?session_id={valid_session_id}", follow_redirects=False)
-    assert resp.status_code in (302, 307)
-    assert "notion.com" in resp.headers["location"]
-
-
-def test_notion_oauth_callback_stores_token(client, mocker):
-    mock_post = mocker.patch("webapp.oauth.requests.post")
-    mock_post.return_value.json.return_value = {
-        "access_token": "notion-tok",
-        "workspace_id": "ws-123",
-    }
-    mock_post.return_value.raise_for_status = lambda: None
-    mocker.patch("webapp.oauth._verify_notion", return_value=True)
-    mocker.patch("webapp.oauth.settings.notion_client_id", "ncid")
-    mocker.patch("webapp.oauth.settings.notion_client_secret", "nsec")
-    mocker.patch("webapp.oauth.settings.base_url", "http://localhost:8000")
-
-    import uuid
-    valid_state = str(uuid.uuid4())
-    resp = client.get(f"/oauth/notion/callback?code=ncode&state={valid_state}")
-    assert resp.status_code == 200
-    assert "notion" in resp.text
-
-    from webapp.session import get_token
-    tokens = get_token(valid_state, "notion")
-    assert tokens["access_token"] == "notion-tok"
-
 
 def test_session_tokens_endpoint(client):
     from webapp.session import set_session_value

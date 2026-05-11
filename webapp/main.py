@@ -53,11 +53,10 @@ def create_app() -> FastAPI:
         return JSONResponse({"status": "ok"})
 
     @app.get("/api/notion/account-managers")
-    def notion_account_managers(session_id: str):
-        tokens = get_token(session_id, "notion")
-        if not tokens:
-            raise HTTPException(status_code=401, detail="Notion not connected")
-        access_token = tokens["access_token"]
+    def notion_account_managers():
+        access_token = settings.notion_token
+        if not access_token:
+            raise HTTPException(status_code=503, detail="Notion token not configured")
         managers: set[str] = set()
         cursor = None
         max_pages = 50  # safety guard against malformed has_more response
@@ -119,14 +118,12 @@ def create_app() -> FastAPI:
         google_tokens = get_token(req.session_id, "google")
         if not google_tokens:
             raise HTTPException(status_code=400, detail="Google connection required")
-        notion_tokens = get_token(req.session_id, "notion")
-
         config_dict = {
             "user_name": req.user_name,
             "user_role": req.user_role,
             "account_manager_name": req.account_manager_name,
             "team_members": req.team_members,
-            "notion_token": notion_tokens["access_token"] if notion_tokens else "",
+            "notion_token": settings.notion_token,
             "notion_database_id": settings.notion_database_id,
             "google_credentials": {
                 "access_token": google_tokens.get("access_token", ""),
@@ -180,3 +177,6 @@ def create_app() -> FastAPI:
         return {"upload_url": upload_url, "s3_key": s3_key}
 
     return app
+
+
+app = create_app()

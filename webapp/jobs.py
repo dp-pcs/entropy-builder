@@ -1,8 +1,9 @@
 # webapp/jobs.py
 import json
-import threading
 import uuid
 from datetime import datetime, timezone
+
+import boto3
 
 from pipeline import ingest, kimi, notion_pull, gmail_pull, readai_pull, vault_builder
 from pipeline.models import JobConfig
@@ -11,8 +12,6 @@ from .config import settings as _webapp_settings
 
 _STEPS = ["ingest", "wiki", "gaps", "notion", "gmail", "readai", "assembly"]
 
-_state_lock = threading.Lock()
-
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -20,11 +19,10 @@ def _now() -> str:
 
 def _update_state(job_id: str, **kwargs) -> None:
     """Update job state in S3. Never include credential fields (tokens, API keys)."""
-    with _state_lock:
-        state = s3.read_job_state(job_id) or {}
-        state.update(kwargs)
-        state["updated_at"] = _now()
-        s3.write_job_state(job_id, state)
+    state = s3.read_job_state(job_id) or {}
+    state.update(kwargs)
+    state["updated_at"] = _now()
+    s3.write_job_state(job_id, state)
 
 
 def update_job_state(job_id: str, **kwargs) -> None:
@@ -34,6 +32,7 @@ def update_job_state(job_id: str, **kwargs) -> None:
 
 def create_job(config_dict: dict, s3_keys: list[str]) -> str:
     job_id = str(uuid.uuid4())
+    s3.write_job_config(job_id, config_dict)
     state = {
         "job_id": job_id,
         "status": "pending",
@@ -49,12 +48,11 @@ def create_job(config_dict: dict, s3_keys: list[str]) -> str:
         "updated_at": _now(),
     }
     s3.write_job_state(job_id, state)
-    t = threading.Thread(
-        target=run_pipeline_job,
-        args=(job_id, config_dict, s3_keys),
-        daemon=True,
+    sqs = boto3.client("sqs", region_name=_webapp_settings.aws_region)
+    sqs.send_message(
+        QueueUrl=_webapp_settings.sqs_queue_url,
+        MessageBody=json.dumps({"job_id": job_id, "s3_keys": s3_keys}),
     )
-    t.start()
     return job_id
 
 
@@ -112,6 +110,7 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
             _update_state(job_id, status="error", error=str(exc))
         except Exception:
             pass  # S3 unreachable — job stays in last known state
+        raise  # let the worker decide whether to retry via SQS
 
 
 def _download_s3_files(s3_keys: list[str]) -> list[dict]:
@@ -137,17 +136,6 @@ def generate_claude_settings(config: JobConfig) -> str:
     google = config.google_credentials or {}
     return json.dumps({
         "mcpServers": {
-            "notion": {
-                "command": "npx",
-                "args": ["-y", _webapp_settings.notion_mcp_package],
-                "env": {
-                    "NOTION_API_KEY": config.notion_token,
-                    "OPENAPI_MCP_HEADERS": json.dumps({
-                        "Authorization": f"Bearer {config.notion_token}",
-                        "Notion-Version": "2022-06-28",
-                    }),
-                }
-            },
             "gmail": {
                 "command": "npx",
                 "args": ["-y", _webapp_settings.gmail_mcp_package],

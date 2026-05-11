@@ -35,6 +35,29 @@ def read_job_state(job_id: str) -> dict | None:
         raise
 
 
+def write_job_config(job_id: str, config: dict) -> None:
+    """Write full job config (including credentials) to S3. Never written to state.json."""
+    _client().put_object(
+        Bucket=settings.s3_bucket,
+        Key=f"jobs/{job_id}/config.json",
+        Body=json.dumps(config),
+        ContentType="application/json",
+        ServerSideEncryption="AES256",
+    )
+
+
+def read_job_config(job_id: str) -> dict | None:
+    try:
+        obj = _client().get_object(
+            Bucket=settings.s3_bucket, Key=f"jobs/{job_id}/config.json"
+        )
+        return json.loads(obj["Body"].read())
+    except ClientError as e:
+        if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+            return None
+        raise
+
+
 def presign_upload(s3_key: str, content_type: str, expires: int = 3600) -> str:
     return _client().generate_presigned_url(
         "put_object",
