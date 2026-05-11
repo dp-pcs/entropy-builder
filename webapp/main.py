@@ -1,6 +1,7 @@
 # webapp/main.py
 import re
 from pathlib import Path
+from typing import Optional
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -18,6 +19,17 @@ class PresignRequest(BaseModel):
     session_id: str
     filename: str
     content_type: str
+
+
+class WizardSubmit(BaseModel):
+    session_id: str
+    user_role: str
+    user_name: str
+    account_manager_name: str
+    team_members: list[str] = []
+    readai_api_key: str = ""
+    s3_keys: list[str] = []
+    interview_answers: dict = {}
 
 
 def create_app() -> FastAPI:
@@ -96,5 +108,35 @@ def create_app() -> FastAPI:
         s3_key = f"uploads/{req.session_id}/{safe_name}"
         upload_url = s3.presign_upload(s3_key, req.content_type)
         return {"upload_url": upload_url, "s3_key": s3_key}
+
+    @app.post("/api/wizard/submit")
+    def wizard_submit(req: WizardSubmit):
+        from . import jobs
+        google_tokens = get_token(req.session_id, "google")
+        if not google_tokens:
+            raise HTTPException(status_code=400, detail="Google connection required")
+        notion_tokens = get_token(req.session_id, "notion")
+
+        config_dict = {
+            "user_name": req.user_name,
+            "user_role": req.user_role,
+            "account_manager_name": req.account_manager_name,
+            "team_members": req.team_members,
+            "notion_token": notion_tokens["access_token"] if notion_tokens else "",
+            "notion_database_id": settings.notion_database_id,
+            "google_credentials": {
+                "access_token": google_tokens.get("access_token", ""),
+                "refresh_token": google_tokens.get("refresh_token", ""),
+                "client_id": google_tokens.get("client_id", settings.google_client_id),
+                "client_secret": google_tokens.get("client_secret", settings.google_client_secret),
+            },
+            "readai_api_key": req.readai_api_key,
+            "fireworks_api_key": settings.fireworks_api_key,
+            "interview_answers": req.interview_answers,
+            "entropy_template_path": settings.entropy_template_path,
+            "product_lines": [],
+        }
+        job_id = jobs.create_job(config_dict, req.s3_keys)
+        return {"job_id": job_id}
 
     return app
