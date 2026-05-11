@@ -82,3 +82,11 @@ def test_analyze_gaps_returns_empty_on_no_gaps(mocker):
     cfg = _make_config()
     gaps = analyze_gaps(cfg, [VaultFile("User-Profile.md", "# P")])
     assert gaps == []
+
+
+def test_parse_wiki_response_handles_nested_fences():
+    inner = json.dumps({"file.md": "# Title\n```python\ncode here\n```\n"})
+    raw = f"```json\n{inner}\n```"
+    files = _parse_wiki_response(raw)
+    assert len(files) == 1
+    assert "```python" in files[0].content

@@ -1,7 +1,11 @@
 # entropy_builder/pipeline/kimi.py
 import json
+import re
+import time
 import requests
 from .models import JobConfig, VaultFile, GapItem
+
+_CODE_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*)```", re.DOTALL)
 
 FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 MODEL = "accounts/fireworks/models/kimi-k2p6"
@@ -52,40 +56,49 @@ Be concise — 3 gaps maximum."""
 
 
 def _call_kimi(api_key: str, system: str, user_content: str) -> str:
-    resp = requests.post(
-        FIREWORKS_URL,
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        json={
-            "model": MODEL,
-            "max_tokens": 32768,
-            "temperature": 0.6,
-            "top_p": 1,
-            "top_k": 40,
-            "presence_penalty": 0,
-            "frequency_penalty": 0,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_content},
-            ],
-        },
-        timeout=300,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    payload = {
+        "model": MODEL,
+        "max_tokens": 32768,
+        "temperature": 0.6,
+        "top_p": 1,
+        "top_k": 40,
+        "presence_penalty": 0,
+        "frequency_penalty": 0,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_content},
+        ],
+    }
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+    last_exc = None
+    for attempt in range(3):
+        if attempt > 0:
+            time.sleep(2 ** attempt)  # 2s, 4s
+        try:
+            resp = requests.post(FIREWORKS_URL, headers=headers, json=payload, timeout=300)
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code < 500 and e.response.status_code != 429:
+                raise  # don't retry 4xx except 429
+            last_exc = e
+        except requests.RequestException as e:
+            last_exc = e
+    raise last_exc
 
 
 def _parse_wiki_response(raw: str) -> list[VaultFile]:
     try:
-        if raw.startswith("```"):
-            parts = raw.split("```")
-            raw = parts[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        data = json.loads(raw.strip())
+        text = raw.strip()
+        if text.startswith("```"):
+            m = _CODE_FENCE_RE.search(text)
+            if m:
+                text = m.group(1).strip()
+        data = json.loads(text)
         return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)]
     except (json.JSONDecodeError, AttributeError):
         return []
@@ -139,6 +152,13 @@ def analyze_gaps(config: JobConfig, wiki_files: list[VaultFile]) -> list[GapItem
         data = json.loads(raw.strip())
         if not isinstance(data, list):
             return []
-        return [GapItem(**g) for g in data if isinstance(g, dict)]
-    except (json.JSONDecodeError, TypeError):
+        gaps = []
+        for g in data:
+            if isinstance(g, dict):
+                try:
+                    gaps.append(GapItem(**g))
+                except TypeError:
+                    continue
+        return gaps
+    except json.JSONDecodeError:
         return []
