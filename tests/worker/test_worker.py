@@ -47,6 +47,23 @@ def test_process_message_missing_config(mocker):
     mock_run.assert_not_called()
 
 
+def test_process_message_invalid_body(mocker):
+    from worker.__main__ import _process_message
+
+    mock_run = mocker.patch("worker.__main__.run_pipeline_job")
+
+    sqs_client = MagicMock()
+    queue_url = "https://sqs.us-east-1.amazonaws.com/123/test-queue"
+    msg = {"Body": "not valid json", "ReceiptHandle": "rcpt-bad"}
+
+    _process_message(sqs_client, queue_url, msg)
+
+    sqs_client.delete_message.assert_called_once_with(
+        QueueUrl=queue_url, ReceiptHandle="rcpt-bad"
+    )
+    mock_run.assert_not_called()
+
+
 def test_process_message_pipeline_failure(mocker):
     from worker.__main__ import _process_message
 

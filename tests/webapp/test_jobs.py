@@ -83,7 +83,9 @@ def test_run_pipeline_job_error_path(mocker):
     mocker.patch("webapp.jobs._download_s3_files", return_value=[])
     mocker.patch("webapp.jobs.ingest.ingest", side_effect=RuntimeError("ingest failed"))
 
-    run_pipeline_job("j2", _make_config(), [])
+    import pytest
+    with pytest.raises(RuntimeError, match="ingest failed"):
+        run_pipeline_job("j2", _make_config(), [])
 
     error_state = mock_write.call_args_list[-1][0][1]
     assert error_state["status"] == "error"
@@ -117,7 +119,9 @@ def test_run_pipeline_job_notion_failure(mocker):
         "readai_api_key": "ra-key", "fireworks_api_key": "fw-key",
         "interview_answers": {}, "entropy_template_path": "/tmp", "product_lines": [],
     }
-    run_pipeline_job("j3", config, [])
+    import pytest
+    with pytest.raises(RuntimeError, match="Notion API 429"):
+        run_pipeline_job("j3", config, [])
 
     error_state = mock_write.call_args_list[-1][0][1]
     assert error_state["status"] == "error"

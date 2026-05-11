@@ -110,6 +110,7 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
             _update_state(job_id, status="error", error=str(exc))
         except Exception:
             pass  # S3 unreachable — job stays in last known state
+        raise  # let the worker decide whether to retry via SQS
 
 
 def _download_s3_files(s3_keys: list[str]) -> list[dict]:

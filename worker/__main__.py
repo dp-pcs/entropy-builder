@@ -17,10 +17,16 @@ logger = logging.getLogger(__name__)
 
 
 def _process_message(sqs_client, queue_url: str, msg: dict) -> None:
-    body = json.loads(msg["Body"])
-    job_id = body["job_id"]
-    s3_keys = body.get("s3_keys", [])
     receipt = msg["ReceiptHandle"]
+    try:
+        body = json.loads(msg["Body"])
+        job_id = body["job_id"]
+    except (json.JSONDecodeError, KeyError):
+        logger.warning("Unparseable message body — deleting: %s", msg.get("Body", "")[:200])
+        sqs_client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt)
+        return
+
+    s3_keys = body.get("s3_keys", [])
 
     config = s3.read_job_config(job_id)
     if config is None:
