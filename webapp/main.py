@@ -28,6 +28,14 @@ def create_app() -> FastAPI:
 
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
+    @app.get("/")
+    def index(request: Request):
+        return templates.TemplateResponse(request, "index.html")
+
+    @app.get("/wizard")
+    def wizard(request: Request):
+        return templates.TemplateResponse(request, "wizard.html")
+
     @app.get("/health")
     def health():
         return JSONResponse({"status": "ok"})

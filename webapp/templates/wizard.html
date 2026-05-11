@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entropy — Build My System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+<div class="max-w-2xl mx-auto px-6 py-12">
+
+  <div class="mb-10">
+    <div class="flex justify-between text-sm text-slate-500 mb-2">
+      <span>Build My System</span>
+      <span id="progress-text">Step 1 of 10</span>
+    </div>
+    <div class="w-full bg-slate-200 rounded-full h-2">
+      <div id="progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width:10%"></div>
+    </div>
+  </div>
+
+  <!-- Step 1: Role -->
+  <div id="step-1" class="step">
+    <h2 class="text-2xl font-bold mb-2">What's your role?</h2>
+    <p class="text-slate-500 mb-6">This determines your Notion filter, skill set, and vault configuration.</p>
+    <div class="space-y-3">
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="role" value="ic" class="mt-1">
+        <div><div class="font-semibold">Individual Contributor (Salesperson)</div><div class="text-sm text-slate-500">I manage my own customer portfolio</div></div>
+      </label>
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="role" value="manager" class="mt-1">
+        <div><div class="font-semibold">Manager</div><div class="text-sm text-slate-500">I oversee a team of ICs and need portfolio-level visibility</div></div>
+      </label>
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="role" value="leadership" class="mt-1">
+        <div><div class="font-semibold">Leadership</div><div class="text-sm text-slate-500">Org-wide view — aggregation across all team members</div></div>
+      </label>
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="role" value="external" class="mt-1">
+        <div><div class="font-semibold">External / Different Org</div><div class="text-sm text-slate-500">Not part of this Notion workspace</div></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Step 2: Name -->
+  <div id="step-2" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Your name</h2>
+    <p class="text-slate-500 mb-6">Used to personalize your vault and filter Notion to your accounts.</p>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Full name</label>
+        <input id="user-name" type="text" placeholder="e.g. Alice Johnson" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
+      </div>
+      <div id="account-manager-field">
+        <label class="block text-sm font-medium mb-1">Name as it appears in Notion's Account Manager field</label>
+        <input id="account-manager-name" type="text" placeholder="Usually same as your full name" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Data inventory -->
+  <div id="step-3" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Do you have existing notes or a knowledge base?</h2>
+    <p class="text-slate-500 mb-6">If you do, upload it and we'll analyze what's there and fill the gaps.</p>
+    <div class="space-y-3 mb-6">
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="data-state" value="full" class="mt-1">
+        <div><div class="font-semibold">Yes — structured 2nd brain (Obsidian, Workflowy, Notion export)</div></div>
+      </label>
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="data-state" value="partial" class="mt-1">
+        <div><div class="font-semibold">Yes — scattered notes, not organized as a 2nd brain</div></div>
+      </label>
+      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
+        <input type="radio" name="data-state" value="fresh" class="mt-1">
+        <div><div class="font-semibold">No — starting fresh</div></div>
+      </label>
+    </div>
+    <div id="data-upload-area" class="hidden">
+      <label class="block text-sm font-medium mb-1">Upload your vault or notes (ZIP, OPML, PDF, .md, .docx)</label>
+      <input type="file" id="vault-upload" accept=".zip,.opml,.pdf,.md,.txt,.docx" multiple
+             onchange="uploadFile(this, 'vault')"
+             class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
+      <span id="vault-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+    </div>
+  </div>
+
+  <!-- Step 4: Books -->
+  <div id="step-4" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Books that shaped how you think</h2>
+    <p class="text-slate-500 mb-6">List 3–10 books. These become the foundation of your knowledge wiki.</p>
+    <textarea id="books-input" rows="5" placeholder="Never Split the Difference&#10;Atomic Habits&#10;The 48 Laws of Power" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+    <div class="mt-4">
+      <label class="block text-sm font-medium mb-1">Upload Kindle highlights, book notes, or reading list (optional)</label>
+      <input type="file" id="books-upload" accept=".pdf,.md,.txt,.docx,.html,.csv"
+             onchange="uploadFile(this, 'books')"
+             class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
+      <span id="books-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+    </div>
+  </div>
+
+  <!-- Step 5: Frameworks -->
+  <div id="step-5" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Frameworks and systems you use</h2>
+    <p class="text-slate-500 mb-6">What mental models, sales methodologies, or decision frameworks do you apply regularly?</p>
+    <textarea id="frameworks-input" rows="5" placeholder="MEDDICC for deal qualification&#10;SPIN Selling for discovery&#10;Ackerman bargaining for negotiation" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+    <div class="mt-4">
+      <label class="block text-sm font-medium mb-1">Attach any notes about frameworks you use (optional)</label>
+      <input type="file" id="frameworks-upload" accept=".pdf,.md,.txt,.docx"
+             onchange="uploadFile(this, 'frameworks')"
+             class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
+      <span id="frameworks-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+    </div>
+  </div>
+
+  <!-- Step 6: Psych profile -->
+  <div id="step-6" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Your psychological profile</h2>
+    <p class="text-slate-500 mb-6">This calibrates how the system coaches you — pushing toward growth edges, not just validating instincts.</p>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">DiSC, Enneagram, StrengthsFinder, MBTI (any you know)</label>
+        <input id="psych-input" type="text" placeholder="e.g. ENTJ, Achiever, High D, Type 8" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Upload your assessment results PDF or image (optional)</label>
+        <input type="file" id="psych-upload" accept=".pdf,.png,.jpg,.jpeg"
+               onchange="uploadFile(this, 'psych')"
+               class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
+        <span id="psych-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 7: Decision style + goals -->
+  <div id="step-7" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">How you think and what you want</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">How do you make decisions? What's your thinking style?</label>
+        <textarea id="decision-style" rows="3" placeholder="e.g. I'm fast and intuitive, sometimes miss detail. I trust frameworks over gut when stakes are high." class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">What do you want this system to help you with most?</label>
+        <textarea id="system-goals" rows="3" placeholder="e.g. Renewal prep, spotting at-risk accounts early, drafting emails faster." class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Any other files to include? (optional)</label>
+        <input type="file" id="misc-upload" accept=".pdf,.md,.txt,.docx,.zip"
+               onchange="uploadFile(this, 'misc')"
+               class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
+        <span id="misc-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 8: Connect Google -->
+  <div id="step-8" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Connect Gmail</h2>
+    <p class="text-slate-500 mb-6">We'll pull your last 90 days of email. Only emails matching your customer domains are stored — nothing else.</p>
+    <div class="p-5 border-2 rounded-xl">
+      <button onclick="openOAuth('google')" id="google-connect-btn"
+              class="w-full bg-white border-2 border-slate-300 rounded-xl py-3 px-4 font-medium hover:border-indigo-400 flex items-center justify-center gap-3">
+        Connect Google
+      </button>
+      <p id="google-status" class="mt-3 text-sm text-center text-slate-400">Not connected</p>
+    </div>
+    <p class="text-xs text-slate-400 mt-4 text-center">A popup will open for Google sign-in. After connecting, the system runs a test query to verify it works.</p>
+  </div>
+
+  <!-- Step 9: Connect Notion -->
+  <div id="step-9" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Connect Notion</h2>
+    <p class="text-slate-500 mb-6">Grants read access to your shared customer database. A test query verifies the connection before you proceed.</p>
+    <div class="p-5 border-2 rounded-xl mb-4">
+      <button onclick="openOAuth('notion')" id="notion-connect-btn"
+              class="w-full bg-white border-2 border-slate-300 rounded-xl py-3 px-4 font-medium hover:border-indigo-400 flex items-center justify-center gap-3">
+        Connect Notion
+      </button>
+      <p id="notion-status" class="mt-3 text-sm text-center text-slate-400">Not connected</p>
+    </div>
+    <div id="team-member-section" class="hidden">
+      <label class="block text-sm font-medium mb-2">Select your direct reports (your vault will cover their portfolios)</label>
+      <select id="team-members" multiple class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm h-32"></select>
+      <p class="text-xs text-slate-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
+    </div>
+  </div>
+
+  <!-- Step 10: read.ai + submit -->
+  <div id="step-10" class="step hidden">
+    <h2 class="text-2xl font-bold mb-2">Almost done</h2>
+    <p class="text-slate-500 mb-6">One optional connection, then we'll build your vault.</p>
+    <div class="mb-6">
+      <label class="block text-sm font-medium mb-1">read.ai API key (optional — enables meeting transcript ingestion)</label>
+      <input id="readai-key" type="password" placeholder="Find it at app.read.ai / Settings / API" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm">
+    </div>
+    <div class="bg-indigo-50 rounded-xl p-5 mb-6 text-sm text-slate-600 space-y-1">
+      <p class="font-semibold mb-2">What you'll get:</p>
+      <p>✓ Personalized 2nd brain wiki (books, frameworks, principles, your profile)</p>
+      <p>✓ Customer portfolio imported from Notion with pre-populated intelligence summaries</p>
+      <p>✓ 90 days of Gmail history filed by account</p>
+      <p id="readai-item" class="text-slate-400">○ 90 days of meeting transcripts (connect read.ai above to enable)</p>
+      <p>✓ Pre-configured Claude Desktop ready to query all of it</p>
+    </div>
+    <button onclick="submitWizard()" id="submit-btn"
+            class="w-full bg-indigo-600 text-white font-semibold py-4 rounded-xl hover:bg-indigo-700 transition text-lg">
+      Build My System
+    </button>
+    <p class="text-xs text-slate-400 text-center mt-3">Processing takes ~2 hours. You'll get a status page to track progress.</p>
+  </div>
+
+  <!-- Navigation -->
+  <div class="flex justify-between mt-10">
+    <button onclick="prevStep()" id="back-btn" class="hidden text-slate-500 font-medium py-3 px-6 rounded-xl border-2 hover:border-slate-300 transition">Back</button>
+    <button onclick="nextStep()" id="next-btn" class="ml-auto bg-indigo-600 text-white font-semibold py-3 px-8 rounded-xl hover:bg-indigo-700 transition">Continue</button>
+  </div>
+
+</div>
+
+<script>
+const SESSION_ID = crypto.randomUUID();
+const TOTAL_STEPS = 10;
+let currentStep = 1;
+let formData = {
+  session_id: SESSION_ID,
+  user_role: null,
+  user_name: '',
+  account_manager_name: '',
+  team_members: [],
+  readai_api_key: '',
+  s3_keys: [],
+  interview_answers: {}
+};
+
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(function(el) { el.classList.add('hidden'); });
+  document.getElementById('step-' + n).classList.remove('hidden');
+  document.getElementById('progress-text').textContent = 'Step ' + n + ' of ' + TOTAL_STEPS;
+  document.getElementById('progress-bar').style.width = ((n / TOTAL_STEPS) * 100) + '%';
+  document.getElementById('back-btn').classList.toggle('hidden', n === 1);
+  document.getElementById('next-btn').classList.toggle('hidden', n === TOTAL_STEPS);
+  window.scrollTo(0, 0);
+
+  if (n === 3) {
+    document.querySelectorAll('input[name="data-state"]').forEach(function(r) {
+      r.addEventListener('change', function() {
+        document.getElementById('data-upload-area').classList.toggle('hidden', r.value === 'fresh');
+      });
+    });
+  }
+  if (n === 9 && (formData.user_role === 'manager' || formData.user_role === 'leadership')) {
+    document.getElementById('team-member-section').classList.remove('hidden');
+    if (document.getElementById('team-members').options.length === 0) {
+      loadTeamMembers();
+    }
+  }
+  if (n === 10) {
+    document.getElementById('readai-key').addEventListener('input', function() {
+      var hasKey = this.value.trim().length > 0;
+      document.getElementById('readai-item').textContent =
+        hasKey ? '✓ 90 days of meeting transcripts' : '○ 90 days of meeting transcripts (connect read.ai above to enable)';
+    });
+  }
+}
+
+function validateStep(n) {
+  if (n === 1 && !document.querySelector('input[name="role"]:checked')) {
+    alert('Please select your role.'); return false;
+  }
+  if (n === 2 && !document.getElementById('user-name').value.trim()) {
+    alert('Please enter your name.'); return false;
+  }
+  return true;
+}
+
+function saveStepData(n) {
+  if (n === 1) formData.user_role = document.querySelector('input[name="role"]:checked') ? document.querySelector('input[name="role"]:checked').value : null;
+  if (n === 2) {
+    formData.user_name = document.getElementById('user-name').value.trim();
+    formData.account_manager_name = document.getElementById('account-manager-name').value.trim() || formData.user_name;
+  }
+  if (n === 3) formData.interview_answers.data_state = document.querySelector('input[name="data-state"]:checked') ? document.querySelector('input[name="data-state"]:checked').value : 'fresh';
+  if (n === 4) formData.interview_answers.books = document.getElementById('books-input').value;
+  if (n === 5) formData.interview_answers.frameworks = document.getElementById('frameworks-input').value;
+  if (n === 6) formData.interview_answers.psych_profile = document.getElementById('psych-input').value;
+  if (n === 7) {
+    formData.interview_answers.decision_style = document.getElementById('decision-style').value;
+    formData.interview_answers.system_goals = document.getElementById('system-goals').value;
+  }
+  if (n === 9) {
+    var sel = document.getElementById('team-members');
+    formData.team_members = Array.from(sel.selectedOptions).map(function(o) { return o.value; });
+  }
+  if (n === 10) formData.readai_api_key = document.getElementById('readai-key').value.trim();
+}
+
+function nextStep() {
+  if (!validateStep(currentStep)) return;
+  saveStepData(currentStep);
+  currentStep++;
+  showStep(currentStep);
+}
+
+function prevStep() {
+  if (currentStep > 1) { currentStep--; showStep(currentStep); }
+}
+
+async function uploadFile(inputEl, purpose) {
+  var files = Array.from(inputEl.files);
+  if (!files.length) return;
+  var statusEl = document.getElementById(purpose + '-upload-status');
+  statusEl.textContent = 'Uploading...';
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    try {
+      var resp = await fetch('/api/upload/presign', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({session_id: SESSION_ID, filename: file.name, content_type: file.type || 'application/octet-stream'})
+      });
+      if (!resp.ok) throw new Error('Presign failed');
+      var data = await resp.json();
+      await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
+      formData.s3_keys.push(data.s3_key);
+    } catch(e) {
+      statusEl.textContent = 'Error uploading ' + file.name;
+      return;
+    }
+  }
+  statusEl.textContent = files.length + ' file(s) uploaded';
+}
+
+function openOAuth(provider) {
+  var popup = window.open('/oauth/' + provider + '?session_id=' + SESSION_ID, 'oauth', 'width=600,height=700,left=200,top=100');
+  function handler(e) {
+    if (e.data && e.data.provider === provider && e.origin === window.location.origin) {
+      window.removeEventListener('message', handler);
+      var statusEl = document.getElementById(provider + '-status');
+      if (e.data.success) {
+        statusEl.textContent = e.data.verified ? 'Connected and verified' : 'Connected (verification pending)';
+        document.getElementById(provider + '-connect-btn').disabled = true;
+      } else {
+        statusEl.textContent = 'Connection failed — please try again';
+      }
+    }
+  }
+  window.addEventListener('message', handler);
+}
+
+async function loadTeamMembers() {
+  try {
+    var resp = await fetch('/api/notion/account-managers?session_id=' + SESSION_ID);
+    if (!resp.ok) return;
+    var data = await resp.json();
+    var sel = document.getElementById('team-members');
+    data.managers.forEach(function(name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;  // textContent prevents XSS
+      sel.appendChild(opt);
+    });
+  } catch(e) { /* non-fatal */ }
+}
+
+async function submitWizard() {
+  saveStepData(10);
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  try {
+    var resp = await fetch('/api/wizard/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(formData)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    window.location.href = '/job/' + data.job_id;
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Build My System';
+    alert('Submission failed. Please try again.');
+  }
+}
+
+showStep(1);
+</script>
+
+</body>
+</html>
