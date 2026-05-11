@@ -5,6 +5,7 @@ from typing import Optional
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from . import s3
@@ -32,12 +33,16 @@ class WizardSubmit(BaseModel):
     interview_answers: dict = {}
 
 
+_STATIC_DIR = Path(__file__).parent / "static"
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Entropy Onboarding")
 
     from .oauth import router as oauth_router
     app.include_router(oauth_router)
 
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
     @app.get("/")

@@ -4,211 +4,260 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Entropy — Build My System</title>
+  <link rel="icon" href="/static/entropy-favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            charcoal: '#2B2D42',
+            sage: '#4A6B5C',
+            cream: '#FAF7F2',
+            pearl: '#F8F9FA',
+          },
+          fontFamily: {
+            display: ['Space Grotesk', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans">
+<body class="bg-cream text-charcoal font-body">
+
+  <header class="border-b border-charcoal/10 bg-cream/80 backdrop-blur-sm sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto px-6 py-4">
+      <img src="/static/entropy-logo-horizontal.png" alt="Entropy" class="h-8">
+    </div>
+  </header>
 
 <div class="max-w-2xl mx-auto px-6 py-12">
 
   <div class="mb-10">
-    <div class="flex justify-between text-sm text-slate-500 mb-2">
-      <span>Build My System</span>
+    <div class="flex justify-between text-sm text-charcoal/50 mb-2">
+      <span class="font-display font-semibold">Build My System</span>
       <span id="progress-text">Step 1 of 10</span>
     </div>
-    <div class="w-full bg-slate-200 rounded-full h-2">
-      <div id="progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width:10%"></div>
+    <div class="w-full bg-charcoal/10 rounded-full h-1.5">
+      <div id="progress-bar" class="bg-sage h-1.5 rounded-full transition-all" style="width:10%"></div>
     </div>
   </div>
 
   <!-- Step 1: Role -->
   <div id="step-1" class="step">
-    <h2 class="text-2xl font-bold mb-2">What's your role?</h2>
-    <p class="text-slate-500 mb-6">This determines your Notion filter, skill set, and vault configuration.</p>
+    <h2 class="font-display text-2xl font-bold mb-2">What's your role?</h2>
+    <p class="text-charcoal/55 mb-6">This determines your Notion filter, skill set, and vault configuration.</p>
     <div class="space-y-3">
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="role" value="ic" class="mt-1">
-        <div><div class="font-semibold">Individual Contributor (Salesperson)</div><div class="text-sm text-slate-500">I manage my own customer portfolio</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="role" value="ic" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">Individual Contributor (Salesperson)</div><div class="text-sm text-charcoal/55">I manage my own customer portfolio</div></div>
       </label>
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="role" value="manager" class="mt-1">
-        <div><div class="font-semibold">Manager</div><div class="text-sm text-slate-500">I oversee a team of ICs and need portfolio-level visibility</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="role" value="manager" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">Manager</div><div class="text-sm text-charcoal/55">I oversee a team of ICs and need portfolio-level visibility</div></div>
       </label>
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="role" value="leadership" class="mt-1">
-        <div><div class="font-semibold">Leadership</div><div class="text-sm text-slate-500">Org-wide view — aggregation across all team members</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="role" value="leadership" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">Leadership</div><div class="text-sm text-charcoal/55">Org-wide view — aggregation across all team members</div></div>
       </label>
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="role" value="external" class="mt-1">
-        <div><div class="font-semibold">External / Different Org</div><div class="text-sm text-slate-500">Not part of this Notion workspace</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="role" value="external" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">External / Different Org</div><div class="text-sm text-charcoal/55">Not part of this Notion workspace</div></div>
       </label>
     </div>
   </div>
 
   <!-- Step 2: Name -->
   <div id="step-2" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Your name</h2>
-    <p class="text-slate-500 mb-6">Used to personalize your vault and filter Notion to your accounts.</p>
+    <h2 class="font-display text-2xl font-bold mb-2">Your name</h2>
+    <p class="text-charcoal/55 mb-6">Used to personalize your vault and filter Notion to your accounts.</p>
     <div class="space-y-4">
       <div>
         <label for="user-name" class="block text-sm font-medium mb-1">Full name</label>
-        <input id="user-name" type="text" placeholder="e.g. Alice Johnson" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
+        <input id="user-name" type="text" placeholder="e.g. Alice Johnson" class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage bg-white">
       </div>
       <div id="account-manager-field">
         <label for="account-manager-name" class="block text-sm font-medium mb-1">Name as it appears in Notion's Account Manager field</label>
-        <input id="account-manager-name" type="text" placeholder="Usually same as your full name" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
+        <input id="account-manager-name" type="text" placeholder="Usually same as your full name" class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage bg-white">
       </div>
     </div>
   </div>
 
   <!-- Step 3: Data inventory -->
   <div id="step-3" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Do you have existing notes or a knowledge base?</h2>
-    <p class="text-slate-500 mb-6">If you do, upload it and we'll analyze what's there and fill the gaps.</p>
+    <h2 class="font-display text-2xl font-bold mb-2">Do you have existing notes or a knowledge base?</h2>
+    <p class="text-charcoal/55 mb-6">If you do, upload it and we'll analyze what's there and fill the gaps.</p>
     <div class="space-y-3 mb-6">
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="data-state" value="full" class="mt-1">
-        <div><div class="font-semibold">Yes — structured 2nd brain (Obsidian, Workflowy, Notion export)</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="data-state" value="full" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">Yes — structured 2nd brain (Obsidian, Workflowy, Notion export)</div></div>
       </label>
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="data-state" value="partial" class="mt-1">
-        <div><div class="font-semibold">Yes — scattered notes, not organized as a 2nd brain</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="data-state" value="partial" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">Yes — scattered notes, not organized as a 2nd brain</div></div>
       </label>
-      <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50">
-        <input type="radio" name="data-state" value="fresh" class="mt-1">
-        <div><div class="font-semibold">No — starting fresh</div></div>
+      <label class="flex items-start gap-3 p-4 border-2 border-charcoal/15 rounded-xl cursor-pointer hover:border-charcoal/40 has-[:checked]:border-charcoal has-[:checked]:bg-charcoal/5">
+        <input type="radio" name="data-state" value="fresh" class="mt-1 accent-sage">
+        <div><div class="font-display font-semibold">No — starting fresh</div></div>
       </label>
     </div>
     <div id="data-upload-area" class="hidden">
-      <label for="vault-upload" class="block text-sm font-medium mb-1">Upload your vault or notes (ZIP, OPML, PDF, .md, .docx)</label>
-      <input type="file" id="vault-upload" accept=".zip,.opml,.pdf,.md,.txt,.docx" multiple
-             onchange="uploadFile(this, 'vault')"
-             class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
-      <span id="vault-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+      <label class="block text-sm font-medium mb-1">Upload your vault or notes <span class="text-sage font-semibold">(required)</span></label>
+      <p class="text-xs text-charcoal/50 mb-3">ZIP, OPML, PDF, .md, .docx — or select a folder</p>
+      <div class="space-y-2">
+        <div>
+          <label class="text-xs text-charcoal/50 block mb-1">Select files</label>
+          <input type="file" id="vault-upload" accept=".zip,.opml,.pdf,.md,.txt,.docx" multiple
+                 onchange="uploadFile(this, 'vault')"
+                 class="block w-full text-sm text-charcoal/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-charcoal/8 file:text-charcoal file:font-medium">
+        </div>
+        <div>
+          <label class="text-xs text-charcoal/50 block mb-1">Or select a folder (Chrome/Edge)</label>
+          <input type="file" id="vault-dir-upload" webkitdirectory multiple
+                 onchange="uploadFile(this, 'vault')"
+                 class="block w-full text-sm text-charcoal/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-charcoal/8 file:text-charcoal file:font-medium">
+        </div>
+      </div>
+      <span id="vault-upload-status" class="text-sm text-charcoal/50 mt-2 block"></span>
     </div>
   </div>
 
   <!-- Step 4: Books -->
   <div id="step-4" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Books that shaped how you think</h2>
-    <p class="text-slate-500 mb-6">List 3–10 books. These become the foundation of your knowledge wiki.</p>
-    <textarea id="books-input" rows="5" placeholder="Never Split the Difference&#10;Atomic Habits&#10;The 48 Laws of Power" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+    <h2 class="font-display text-2xl font-bold mb-2">Books that shaped how you think</h2>
+    <p class="text-charcoal/55 mb-6">List 3–10 books. These become the foundation of your knowledge wiki.</p>
+    <textarea id="books-input" rows="5" placeholder="Never Split the Difference&#10;Atomic Habits&#10;The 48 Laws of Power" class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm bg-white"></textarea>
     <div class="mt-4">
       <label for="books-upload" class="block text-sm font-medium mb-1">Upload Kindle highlights, book notes, or reading list (optional)</label>
       <input type="file" id="books-upload" accept=".pdf,.md,.txt,.docx,.html,.csv"
              onchange="uploadFile(this, 'books')"
-             class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
-      <span id="books-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+             class="block w-full text-sm text-charcoal/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-charcoal/8 file:text-charcoal file:font-medium">
+      <span id="books-upload-status" class="text-sm text-charcoal/50 mt-1 block"></span>
     </div>
   </div>
 
   <!-- Step 5: Frameworks -->
   <div id="step-5" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Frameworks and systems you use</h2>
-    <p class="text-slate-500 mb-6">What mental models, sales methodologies, or decision frameworks do you apply regularly?</p>
-    <textarea id="frameworks-input" rows="5" placeholder="MEDDICC for deal qualification&#10;SPIN Selling for discovery&#10;Ackerman bargaining for negotiation" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+    <h2 class="font-display text-2xl font-bold mb-2">Frameworks and systems you use</h2>
+    <p class="text-charcoal/55 mb-6">What mental models, sales methodologies, or decision frameworks do you apply regularly?</p>
+    <textarea id="frameworks-input" rows="5" placeholder="MEDDICC for deal qualification&#10;SPIN Selling for discovery&#10;Ackerman bargaining for negotiation" class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm bg-white"></textarea>
     <div class="mt-4">
       <label for="frameworks-upload" class="block text-sm font-medium mb-1">Attach any notes about frameworks you use (optional)</label>
       <input type="file" id="frameworks-upload" accept=".pdf,.md,.txt,.docx"
              onchange="uploadFile(this, 'frameworks')"
-             class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
-      <span id="frameworks-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+             class="block w-full text-sm text-charcoal/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-charcoal/8 file:text-charcoal file:font-medium">
+      <span id="frameworks-upload-status" class="text-sm text-charcoal/50 mt-1 block"></span>
     </div>
   </div>
 
   <!-- Step 6: Psych profile -->
   <div id="step-6" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Your psychological profile</h2>
-    <p class="text-slate-500 mb-6">This calibrates how the system coaches you — pushing toward growth edges, not just validating instincts.</p>
+    <h2 class="font-display text-2xl font-bold mb-2">Your psychological profile</h2>
+    <p class="text-charcoal/55 mb-6">This calibrates how the system coaches you — pushing toward growth edges, not just validating instincts.</p>
     <div class="space-y-4">
       <div>
         <label for="psych-input" class="block text-sm font-medium mb-1">DiSC, Enneagram, StrengthsFinder, MBTI (any you know)</label>
-        <input id="psych-input" type="text" placeholder="e.g. ENTJ, Achiever, High D, Type 8" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
+        <input id="psych-input" type="text" placeholder="e.g. ENTJ, Achiever, High D, Type 8" class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage bg-white">
       </div>
       <div>
         <label for="psych-upload" class="block text-sm font-medium mb-1">Upload your assessment results PDF or image (optional)</label>
         <input type="file" id="psych-upload" accept=".pdf,.png,.jpg,.jpeg"
                onchange="uploadFile(this, 'psych')"
-               class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
-        <span id="psych-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+               class="block w-full text-sm text-charcoal/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-charcoal/8 file:text-charcoal file:font-medium">
+        <span id="psych-upload-status" class="text-sm text-charcoal/50 mt-1 block"></span>
       </div>
     </div>
   </div>
 
   <!-- Step 7: Decision style + goals -->
   <div id="step-7" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">How you think and what you want</h2>
+    <h2 class="font-display text-2xl font-bold mb-2">How you think and what you want</h2>
     <div class="space-y-4">
       <div>
         <label for="decision-style" class="block text-sm font-medium mb-1">How do you make decisions? What's your thinking style?</label>
-        <textarea id="decision-style" rows="3" placeholder="e.g. I'm fast and intuitive, sometimes miss detail. I trust frameworks over gut when stakes are high." class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+        <textarea id="decision-style" rows="3" placeholder="e.g. I'm fast and intuitive, sometimes miss detail. I trust frameworks over gut when stakes are high." class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm bg-white"></textarea>
       </div>
       <div>
         <label for="system-goals" class="block text-sm font-medium mb-1">What do you want this system to help you with most?</label>
-        <textarea id="system-goals" rows="3" placeholder="e.g. Renewal prep, spotting at-risk accounts early, drafting emails faster." class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+        <textarea id="system-goals" rows="3" placeholder="e.g. Renewal prep, spotting at-risk accounts early, drafting emails faster." class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm bg-white"></textarea>
       </div>
       <div>
         <label for="misc-upload" class="block text-sm font-medium mb-1">Any other files to include? (optional)</label>
         <input type="file" id="misc-upload" accept=".pdf,.md,.txt,.docx,.zip"
                onchange="uploadFile(this, 'misc')"
-               class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
-        <span id="misc-upload-status" class="text-sm text-slate-400 mt-1 block"></span>
+               class="block w-full text-sm text-charcoal/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-charcoal/8 file:text-charcoal file:font-medium">
+        <span id="misc-upload-status" class="text-sm text-charcoal/50 mt-1 block"></span>
       </div>
     </div>
   </div>
 
   <!-- Step 8: Connect Google -->
   <div id="step-8" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Connect Gmail</h2>
-    <p class="text-slate-500 mb-6">We'll pull your last 90 days of email. Only emails matching your customer domains are stored — nothing else.</p>
-    <div class="p-5 border-2 rounded-xl">
+    <h2 class="font-display text-2xl font-bold mb-2">Connect Gmail</h2>
+    <p class="text-charcoal/55 mb-6">We'll pull your last 90 days of email. Only emails matching your customer domains are stored — nothing else.</p>
+    <div class="p-5 border-2 border-charcoal/15 rounded-xl">
       <button onclick="openOAuth('google')" id="google-connect-btn"
-              class="w-full bg-white border-2 border-slate-300 rounded-xl py-3 px-4 font-medium hover:border-indigo-400 flex items-center justify-center gap-3">
+              class="w-full bg-white border-2 border-charcoal/20 rounded-xl py-3 px-4 font-display font-medium hover:border-charcoal/50 flex items-center justify-center gap-3">
         Connect Google
       </button>
-      <p id="google-status" class="mt-3 text-sm text-center text-slate-400">Not connected</p>
+      <p id="google-status" class="mt-3 text-sm text-center text-charcoal/40">Not connected</p>
     </div>
-    <p class="text-xs text-slate-400 mt-4 text-center">A popup will open for Google sign-in. After connecting, the system runs a test query to verify it works.</p>
+    <p class="text-xs text-charcoal/40 mt-4 text-center">A popup will open for Google sign-in. After connecting, the system runs a test query to verify it works.</p>
   </div>
 
   <!-- Step 9: Team members (managers/leadership only) -->
   <div id="step-9" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Your team</h2>
-    <p class="text-slate-500 mb-6">Select your direct reports — your vault will cover their portfolios as well.</p>
+    <h2 class="font-display text-2xl font-bold mb-2">Your team</h2>
+    <p class="text-charcoal/55 mb-6">Add your direct reports — your vault will cover their portfolios as well.</p>
     <div id="team-member-section">
-      <label for="team-members" class="block text-sm font-medium mb-2">Select your direct reports</label>
-      <select id="team-members" multiple class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm h-32"></select>
-      <p class="text-xs text-slate-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
-      <p id="team-members-status" class="text-sm text-slate-400 mt-2"></p>
+      <div id="team-members-picker" class="hidden">
+        <label for="team-members" class="block text-sm font-medium mb-2">Select your direct reports</label>
+        <select id="team-members" multiple class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm h-32 bg-white"></select>
+        <p class="text-xs text-charcoal/40 mt-1">Hold Ctrl/Cmd to select multiple</p>
+      </div>
+      <div class="mt-4">
+        <label for="team-members-text" class="block text-sm font-medium mb-1">
+          <span id="team-members-text-label">Or enter names manually (one per line)</span>
+        </label>
+        <textarea id="team-members-text" rows="4" placeholder="Alice Johnson&#10;Bob Smith&#10;Carol Williams"
+                  class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm bg-white"></textarea>
+      </div>
+      <p id="team-members-status" class="text-sm text-charcoal/40 mt-2"></p>
     </div>
   </div>
 
   <!-- Step 10: read.ai + submit -->
   <div id="step-10" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Almost done</h2>
-    <p class="text-slate-500 mb-6">One optional connection, then we'll build your vault.</p>
+    <h2 class="font-display text-2xl font-bold mb-2">Almost done</h2>
+    <p class="text-charcoal/55 mb-6">One optional connection, then we'll build your vault.</p>
     <div class="mb-6">
       <label for="readai-key" class="block text-sm font-medium mb-1">read.ai API key (optional — enables meeting transcript ingestion)</label>
-      <input id="readai-key" type="password" placeholder="Find it at app.read.ai / Settings / API" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm">
+      <input id="readai-key" type="password" placeholder="Find it at app.read.ai / Settings / API" class="w-full border-2 border-charcoal/20 rounded-xl px-4 py-3 focus:outline-none focus:border-sage text-sm bg-white">
     </div>
-    <div class="bg-indigo-50 rounded-xl p-5 mb-6 text-sm text-slate-600 space-y-1">
-      <p class="font-semibold mb-2">What you'll get:</p>
-      <p>✓ Personalized 2nd brain wiki (books, frameworks, principles, your profile)</p>
-      <p>✓ Customer portfolio imported from Notion with pre-populated intelligence summaries</p>
-      <p>✓ 90 days of Gmail history filed by account</p>
-      <p id="readai-item" class="text-slate-400">○ 90 days of meeting transcripts (connect read.ai above to enable)</p>
-      <p>✓ Pre-configured Claude Desktop ready to query all of it</p>
+    <div class="bg-pearl border border-charcoal/10 rounded-xl p-5 mb-6 text-sm text-charcoal/60 space-y-2">
+      <p class="font-display font-semibold text-charcoal mb-3">What you'll get:</p>
+      <p>&#10003; Personalized 2nd brain wiki (books, frameworks, principles, your profile)</p>
+      <p>&#10003; Customer portfolio imported from Notion with pre-populated intelligence summaries</p>
+      <p>&#10003; 90 days of Gmail history filed by account</p>
+      <p id="readai-item" class="text-charcoal/35">&#9675; 90 days of meeting transcripts (connect read.ai above to enable)</p>
+      <p>&#10003; Pre-configured Claude Desktop ready to query all of it</p>
     </div>
     <button onclick="submitWizard()" id="submit-btn"
-            class="w-full bg-indigo-600 text-white font-semibold py-4 rounded-xl hover:bg-indigo-700 transition text-lg">
+            class="w-full bg-charcoal text-cream font-display font-semibold py-4 rounded-xl hover:bg-charcoal/85 transition text-lg">
       Build My System
     </button>
-    <p class="text-xs text-slate-400 text-center mt-3">Processing takes ~2 hours. You'll get a status page to track progress.</p>
+    <p class="text-xs text-charcoal/40 text-center mt-3">Processing takes ~2 hours. You'll get a status page to track progress.</p>
   </div>
 
   <!-- Navigation -->
   <div class="flex justify-between mt-10">
-    <button onclick="prevStep()" id="back-btn" class="hidden text-slate-500 font-medium py-3 px-6 rounded-xl border-2 hover:border-slate-300 transition">Back</button>
-    <button onclick="nextStep()" id="next-btn" class="ml-auto bg-indigo-600 text-white font-semibold py-3 px-8 rounded-xl hover:bg-indigo-700 transition">Continue</button>
+    <button onclick="prevStep()" id="back-btn" class="hidden text-charcoal/60 font-display font-medium py-3 px-6 rounded-xl border-2 border-charcoal/15 hover:border-charcoal/35 transition">Back</button>
+    <button onclick="nextStep()" id="next-btn" class="ml-auto bg-sage text-white font-display font-semibold py-3 px-8 rounded-xl hover:bg-[#3d5a4c] transition">Continue</button>
   </div>
 
 </div>
@@ -217,6 +266,7 @@
 const SESSION_ID = crypto.randomUUID();
 const TOTAL_STEPS = 10;
 let currentStep = 1;
+let vaultUploaded = false;
 let formData = {
   session_id: SESSION_ID,
   user_role: null,
@@ -247,7 +297,8 @@ function showStep(n) {
   if (n === 9) {
     if (formData.user_role === 'manager' || formData.user_role === 'leadership') {
       document.getElementById('team-member-section').classList.remove('hidden');
-      if (document.getElementById('team-members').options.length === 0) {
+      var picker = document.getElementById('team-members-picker');
+      if (picker.classList.contains('hidden') || document.getElementById('team-members').options.length === 0) {
         loadTeamMembers();
       }
     } else {
@@ -270,6 +321,13 @@ function validateStep(n) {
   if (n === 2 && !document.getElementById('user-name').value.trim()) {
     alert('Please enter your name.'); return false;
   }
+  if (n === 3) {
+    var state = document.querySelector('input[name="data-state"]:checked');
+    if (!state) { alert('Please select one of the options.'); return false; }
+    if (state.value !== 'fresh' && !vaultUploaded) {
+      alert('Please upload your notes or vault before continuing.'); return false;
+    }
+  }
   return true;
 }
 
@@ -289,7 +347,10 @@ function saveStepData(n) {
   }
   if (n === 9) {
     var sel = document.getElementById('team-members');
-    formData.team_members = Array.from(sel.selectedOptions).map(function(o) { return o.value; });
+    var fromSelect = Array.from(sel.selectedOptions).map(function(o) { return o.value; });
+    var fromText = document.getElementById('team-members-text').value
+      .split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+    formData.team_members = fromSelect.length > 0 ? fromSelect : fromText;
   }
   if (n === 10) formData.readai_api_key = document.getElementById('readai-key').value.trim();
 }
@@ -313,7 +374,8 @@ async function uploadFile(inputEl, purpose) {
   var files = Array.from(inputEl.files);
   if (!files.length) return;
   var statusEl = document.getElementById(purpose + '-upload-status');
-  statusEl.textContent = 'Uploading...';
+  statusEl.textContent = 'Uploading ' + files.length + ' file(s)...';
+  var successCount = 0;
   for (var i = 0; i < files.length; i++) {
     var file = files[i];
     try {
@@ -326,12 +388,14 @@ async function uploadFile(inputEl, purpose) {
       var data = await resp.json();
       await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
       formData.s3_keys.push(data.s3_key);
+      successCount++;
     } catch(e) {
       statusEl.textContent = 'Error uploading ' + file.name;
       return;
     }
   }
-  statusEl.textContent = files.length + ' file(s) uploaded';
+  statusEl.textContent = successCount + ' file(s) uploaded';
+  if (purpose === 'vault') vaultUploaded = true;
 }
 
 var _oauthHandlers = {};
@@ -361,24 +425,27 @@ function openOAuth(provider) {
 
 async function loadTeamMembers() {
   var statusEl = document.getElementById('team-members-status');
-  statusEl.textContent = 'Loading…';
+  statusEl.textContent = 'Loading names from Notion…';
   try {
     var resp = await fetch('/api/notion/account-managers');
-    if (!resp.ok) {
-      statusEl.textContent = 'Could not load team members';
-      return;
-    }
+    if (!resp.ok) throw new Error('API error');
     var data = await resp.json();
-    var sel = document.getElementById('team-members');
-    data.managers.forEach(function(name) {
-      var opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;  // textContent prevents XSS
-      sel.appendChild(opt);
-    });
-    statusEl.textContent = data.managers.length + ' names loaded';
+    if (data.managers && data.managers.length > 0) {
+      var sel = document.getElementById('team-members');
+      data.managers.forEach(function(name) {
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      document.getElementById('team-members-picker').classList.remove('hidden');
+      document.getElementById('team-members-text-label').textContent = 'Or enter names manually (one per line)';
+      statusEl.textContent = data.managers.length + ' names loaded from Notion';
+    } else {
+      statusEl.textContent = 'No names found — enter manually below';
+    }
   } catch(e) {
-    if (statusEl) statusEl.textContent = 'Could not load team members';
+    statusEl.textContent = 'Could not load from Notion — enter names manually below';
   }
 }
 
