@@ -376,6 +376,7 @@ async function uploadFile(inputEl, purpose) {
   var statusEl = document.getElementById(purpose + '-upload-status');
   statusEl.textContent = 'Uploading ' + files.length + ' file(s)...';
   var successCount = 0;
+  var errorCount = 0;
   for (var i = 0; i < files.length; i++) {
     var file = files[i];
     try {
@@ -389,13 +390,16 @@ async function uploadFile(inputEl, purpose) {
       await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
       formData.s3_keys.push(data.s3_key);
       successCount++;
+      if (purpose === 'vault') vaultUploaded = true;
     } catch(e) {
-      statusEl.textContent = 'Error uploading ' + file.name;
-      return;
+      errorCount++;
     }
   }
-  statusEl.textContent = successCount + ' file(s) uploaded';
-  if (purpose === 'vault') vaultUploaded = true;
+  if (successCount > 0) {
+    statusEl.textContent = successCount + ' file(s) uploaded' + (errorCount > 0 ? ' (' + errorCount + ' skipped)' : '');
+  } else {
+    statusEl.textContent = 'Upload failed — please try again';
+  }
 }
 
 var _oauthHandlers = {};
