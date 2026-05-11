@@ -40,6 +40,7 @@ def test_wizard_submit_returns_job_id(client, mocker):
     import json as _json
     body = _json.loads(call_kwargs["MessageBody"])
     assert body["job_id"] == data["job_id"]
+    assert body["s3_keys"] == _VALID_PAYLOAD["s3_keys"]
 
     # Assert initial S3 state shape
     assert mock_write_state.call_count >= 1
