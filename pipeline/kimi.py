@@ -74,13 +74,14 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> str:
         "top_k": 40,
         "presence_penalty": 0,
         "frequency_penalty": 0,
+        "stream": True,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user_content},
         ],
     }
     headers = {
-        "Accept": "application/json",
+        "Accept": "text/event-stream",
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
     }
@@ -89,9 +90,27 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> str:
         if attempt > 0:
             time.sleep(2 ** attempt)  # 2s, 4s
         try:
-            resp = requests.post(FIREWORKS_URL, headers=headers, json=payload, timeout=300)
+            # stream=True + per-chunk read timeout: timeout resets on every token,
+            # so a 20-minute generation never hits the wall-clock limit.
+            resp = requests.post(
+                FIREWORKS_URL, headers=headers, json=payload,
+                timeout=(10, 120), stream=True,
+            )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            parts = []
+            for raw_line in resp.iter_lines():
+                if not raw_line:
+                    continue
+                line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
+                if not line.startswith("data: "):
+                    continue
+                data = line[6:]
+                if data == "[DONE]":
+                    break
+                chunk = json.loads(data)
+                delta = chunk["choices"][0]["delta"].get("content") or ""
+                parts.append(delta)
+            return "".join(parts)
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code < 500 and e.response.status_code != 429:
                 raise  # don't retry 4xx except 429
