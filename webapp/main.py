@@ -42,7 +42,8 @@ def create_app() -> FastAPI:
     from .oauth import router as oauth_router
     app.include_router(oauth_router)
 
-    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+    if _STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
     @app.get("/")
