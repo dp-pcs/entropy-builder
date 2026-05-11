@@ -93,6 +93,37 @@ def test_run_pipeline_job_error_path(mocker):
     assert "google_credentials" not in error_state
 
 
+def test_run_pipeline_job_notion_failure(mocker):
+    from webapp.jobs import run_pipeline_job
+
+    mock_write = mocker.patch("webapp.jobs.s3.write_job_state")
+    mocker.patch("webapp.jobs.s3.read_job_state", return_value={
+        "job_id": "j3", "status": "pending", "step": "ingest", "step_index": 0,
+        "total_steps": 7, "gaps": [], "gap_s3_keys": [], "vault_key": None,
+        "claude_settings_key": None, "error": None, "created_at": "", "updated_at": "",
+    })
+    mocker.patch("webapp.jobs._download_s3_files", return_value=[])
+    mocker.patch("webapp.jobs.ingest.ingest", return_value=[])
+    mocker.patch("webapp.jobs.kimi.generate_wiki", return_value=[])
+    mocker.patch("webapp.jobs.kimi.analyze_gaps", return_value=[])
+    mocker.patch("webapp.jobs.notion_pull.pull_customers",
+                 side_effect=RuntimeError("Notion API 429"))
+
+    config = {
+        "user_name": "Alice", "user_role": "ic", "account_manager_name": "Alice",
+        "team_members": [], "notion_token": "n-tok", "notion_database_id": "db-id",
+        "google_credentials": {"access_token": "g-acc", "refresh_token": "g-ref",
+                                "client_id": "g-cid", "client_secret": "g-csec"},
+        "readai_api_key": "ra-key", "fireworks_api_key": "fw-key",
+        "interview_answers": {}, "entropy_template_path": "/tmp", "product_lines": [],
+    }
+    run_pipeline_job("j3", config, [])
+
+    error_state = mock_write.call_args_list[-1][0][1]
+    assert error_state["status"] == "error"
+    assert "Notion API 429" in error_state["error"]
+
+
 def test_generate_claude_settings():
     from webapp.jobs import generate_claude_settings
     config = JobConfig(

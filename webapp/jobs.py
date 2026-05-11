@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pipeline import ingest, kimi, notion_pull, gmail_pull, readai_pull, vault_builder
 from pipeline.models import JobConfig
 from . import s3
+from .config import settings as _webapp_settings
 
 _STEPS = ["ingest", "wiki", "gaps", "notion", "gmail", "readai", "assembly"]
 
@@ -127,7 +128,7 @@ def generate_claude_settings(config: JobConfig) -> str:
         "mcpServers": {
             "notion": {
                 "command": "npx",
-                "args": ["-y", "@notionhq/notion-mcp-server"],
+                "args": ["-y", _webapp_settings.notion_mcp_package],
                 "env": {
                     "NOTION_API_KEY": config.notion_token,
                     "OPENAPI_MCP_HEADERS": json.dumps({
@@ -138,7 +139,7 @@ def generate_claude_settings(config: JobConfig) -> str:
             },
             "gmail": {
                 "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-gmail"],
+                "args": ["-y", _webapp_settings.gmail_mcp_package],
                 "env": {
                     "GMAIL_ACCESS_TOKEN": google.get("access_token", ""),
                     "GMAIL_REFRESH_TOKEN": google.get("refresh_token", ""),
@@ -148,7 +149,7 @@ def generate_claude_settings(config: JobConfig) -> str:
             },
             "readai": {
                 "command": "npx",
-                "args": ["-y", "@read-ai/mcp-server"],
+                "args": ["-y", _webapp_settings.readai_mcp_package],
                 "env": {
                     "READAI_API_KEY": config.readai_api_key,
                 }

@@ -13,5 +13,8 @@ class Settings:
     fireworks_api_key: str = field(default_factory=lambda: os.environ.get("FIREWORKS_API_KEY", ""))
     entropy_template_path: str = field(default_factory=lambda: os.environ.get("ENTROPY_TEMPLATE_PATH", ""))
     base_url: str = field(default_factory=lambda: os.environ.get("BASE_URL", "http://localhost:8000"))
+    notion_mcp_package: str = field(default_factory=lambda: os.environ.get("NOTION_MCP_PACKAGE", "@notionhq/notion-mcp-server"))
+    gmail_mcp_package: str = field(default_factory=lambda: os.environ.get("GMAIL_MCP_PACKAGE", "@modelcontextprotocol/server-gmail"))
+    readai_mcp_package: str = field(default_factory=lambda: os.environ.get("READAI_MCP_PACKAGE", "@read-ai/mcp-server"))
 
 settings = Settings()
