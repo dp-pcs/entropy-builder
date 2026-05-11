@@ -1,0 +1,32 @@
+[
+  {
+    "Account Manager": "Test User",
+    "Customers": "Blackbaud",
+    "Product": "Influitive",
+    "SubProduct": "AdvocateHub",
+    "ARR": "$63,818.76",
+    "Renewal Date": "09/15/2026",
+    "Countdown": "127",
+    "Status": "Active, Non-HVO",
+    "Success Level": "Standard",
+    "Contract Term": "12",
+    "ESW Paper": "Yes",
+    "Primary Contact": "Christine Newman",
+    "Email": "christine.newman@blackbaud.com",
+    "Additional Contacts": "",
+    "Champion": "",
+    "Detractor": "",
+    "Decision Maker": "",
+    "Influencer": "",
+    "Product Sentiment": "Negative",
+    "Support Sentiment": "Negative",
+    "Renewals Sentiment": "Negative",
+    "Product Feedback": "Rewards integrations and Metabase reporting concerns.",
+    "Account Notes": "Stable account. Member count near limit.",
+    "Actual Usage": "4724",
+    "Usage Limit": "5000",
+    "Eligible for Extension": "Yes",
+    "EOS: Extended": "Rejected",
+    "Ext Next Steps": ""
+  }
+]
