@@ -11,6 +11,7 @@ from .config import settings
 from .session import get_token
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
 
 class PresignRequest(BaseModel):
@@ -39,21 +40,30 @@ def create_app() -> FastAPI:
         access_token = tokens["access_token"]
         managers: set[str] = set()
         cursor = None
-        while True:
+        max_pages = 50  # safety guard against malformed has_more response
+        for _ in range(max_pages):
             body: dict = {"page_size": 100}
             if cursor:
                 body["start_cursor"] = cursor
-            resp = requests.post(
-                f"https://api.notion.com/v1/databases/{settings.notion_database_id}/query",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Notion-Version": "2022-06-28",
-                    "Content-Type": "application/json",
-                },
-                json=body,
-                timeout=30,
-            )
-            resp.raise_for_status()
+            try:
+                resp = requests.post(
+                    f"https://api.notion.com/v1/databases/{settings.notion_database_id}/query",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Notion-Version": "2022-06-28",
+                        "Content-Type": "application/json",
+                    },
+                    json=body,
+                    timeout=30,
+                )
+                resp.raise_for_status()
+            except requests.HTTPError as exc:
+                status = exc.response.status_code if exc.response is not None else 502
+                if status == 401:
+                    raise HTTPException(status_code=401, detail="Notion token expired or invalid")
+                raise HTTPException(status_code=502, detail="Notion API error")
+            except requests.RequestException:
+                raise HTTPException(status_code=504, detail="Notion API timeout")
             data = resp.json()
             for row in data.get("results", []):
                 rt = (row.get("properties", {})
@@ -63,14 +73,18 @@ def create_app() -> FastAPI:
                     name = rt[0].get("plain_text", "").strip()
                     if name:
                         managers.add(name)
-            if not data.get("has_more"):
+            if not data.get("has_more") or not data.get("next_cursor"):
                 break
             cursor = data.get("next_cursor")
         return {"managers": sorted(managers)}
 
     @app.post("/api/upload/presign")
     def upload_presign(req: PresignRequest):
+        if not _UUID_RE.match(req.session_id):
+            raise HTTPException(status_code=400, detail="Invalid session_id")
         safe_name = re.sub(r"[^\w.\-]", "_", Path(req.filename).name)
+        if not safe_name or safe_name in (".", ".."):
+            raise HTTPException(status_code=400, detail="Invalid filename")
         s3_key = f"uploads/{req.session_id}/{safe_name}"
         upload_url = s3.presign_upload(s3_key, req.content_type)
         return {"upload_url": upload_url, "s3_key": s3_key}
