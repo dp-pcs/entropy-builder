@@ -264,9 +264,14 @@ def build_customer_domains(records: list[CustomerRecord]) -> VaultFile:
             continue
         domains[domain] = {"customer": record.name, "product": record.product}
 
+    data = {
+        "version": "1.0",
+        "generated": date.today().isoformat(),
+        "domains": domains,
+    }
     return VaultFile(
         path="Entropy/_data/customer_domains.json",
-        content=json.dumps(domains, indent=2),
+        content=json.dumps(data, indent=2),
     )
 
 

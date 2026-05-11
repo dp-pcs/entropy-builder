@@ -72,8 +72,9 @@ def test_build_customer_domains():
     records = parse_notion_rows(rows)
     domains_vf = build_customer_domains(records)
     data = json.loads(domains_vf.content)
-    assert "blackbaud.com" in data
-    assert data["blackbaud.com"]["customer"] == "Blackbaud"
+    assert "domains" in data
+    assert "blackbaud.com" in data["domains"]
+    assert data["domains"]["blackbaud.com"]["customer"] == "Blackbaud"
 
 
 def test_build_hub_nodes_creates_product_node():
