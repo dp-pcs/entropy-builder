@@ -1,3 +1,4 @@
+import re
 import urllib.parse
 import requests
 from fastapi import APIRouter
@@ -14,6 +15,16 @@ _GOOGLE_SCOPES = "openid email https://www.googleapis.com/auth/gmail.readonly"
 _NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
 _NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+
+
+def _validate_state(state: str) -> None:
+    """Reject non-UUID state parameters to prevent CSRF/DoS."""
+    if not _UUID_RE.match(state):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+
 _POPUP_HTML = """<!DOCTYPE html>
 <html><head><title>Connecting...</title></head><body>
 <script>
@@ -21,6 +32,17 @@ _POPUP_HTML = """<!DOCTYPE html>
   var msg = {{provider: '{provider}', success: true, verified: {verified}}};
   if (window.opener) {{ window.opener.postMessage(msg, window.location.origin); window.close(); }}
   else {{ document.body.textContent = '{provider} connected. You can close this window.'; }}
+}})();
+</script>
+</body></html>"""
+
+_POPUP_FAIL_HTML = """<!DOCTYPE html>
+<html><head><title>Connection failed</title></head><body>
+<script>
+(function(){{
+  var msg = {{provider: '{provider}', success: false, verified: false}};
+  if (window.opener) {{ window.opener.postMessage(msg, window.location.origin); window.close(); }}
+  else {{ document.body.textContent = '{provider} connection failed. You can close this window.'; }}
 }})();
 </script>
 </body></html>"""
@@ -42,15 +64,19 @@ def google_start(session_id: str):
 
 @router.get("/oauth/google/callback")
 def google_callback(code: str, state: str):
-    resp = requests.post(_GOOGLE_TOKEN_URL, data={
-        "code": code,
-        "client_id": settings.google_client_id,
-        "client_secret": settings.google_client_secret,
-        "redirect_uri": f"{settings.base_url}/oauth/google/callback",
-        "grant_type": "authorization_code",
-    })
-    resp.raise_for_status()
-    tokens = resp.json()
+    _validate_state(state)
+    try:
+        resp = requests.post(_GOOGLE_TOKEN_URL, data={
+            "code": code,
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": f"{settings.base_url}/oauth/google/callback",
+            "grant_type": "authorization_code",
+        }, timeout=15)
+        resp.raise_for_status()
+        tokens = resp.json()
+    except Exception:
+        return HTMLResponse(_POPUP_FAIL_HTML.format(provider="google"))
     set_session_value(state, "google_tokens", tokens)
     verified = _verify_google(tokens.get("access_token", ""))
     return HTMLResponse(_POPUP_HTML.format(
@@ -73,17 +99,22 @@ def notion_start(session_id: str):
 
 @router.get("/oauth/notion/callback")
 def notion_callback(code: str, state: str):
-    resp = requests.post(
-        _NOTION_TOKEN_URL,
-        json={
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": f"{settings.base_url}/oauth/notion/callback",
-        },
-        auth=(settings.notion_client_id, settings.notion_client_secret),
-    )
-    resp.raise_for_status()
-    tokens = resp.json()
+    _validate_state(state)
+    try:
+        resp = requests.post(
+            _NOTION_TOKEN_URL,
+            json={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": f"{settings.base_url}/oauth/notion/callback",
+            },
+            auth=(settings.notion_client_id, settings.notion_client_secret),
+            timeout=15,
+        )
+        resp.raise_for_status()
+        tokens = resp.json()
+    except Exception:
+        return HTMLResponse(_POPUP_FAIL_HTML.format(provider="notion"))
     set_session_value(state, "notion_tokens", tokens)
     verified = _verify_notion(tokens.get("access_token", ""))
     return HTMLResponse(_POPUP_HTML.format(
