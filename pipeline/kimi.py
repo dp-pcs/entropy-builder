@@ -7,6 +7,16 @@ from .models import JobConfig, VaultFile, GapItem
 
 _CODE_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*)```", re.DOTALL)
 
+
+def _strip_fence(raw: str) -> str:
+    """Strip markdown code fences from a model response."""
+    text = raw.strip()
+    if text.startswith("```"):
+        m = _CODE_FENCE_RE.search(text)
+        if m:
+            text = m.group(1).strip()
+    return text
+
 FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 MODEL = "accounts/fireworks/models/kimi-k2p6"
 CHUNK_SIZE = 80_000  # chars — stay under Kimi's context limit per call
@@ -93,11 +103,7 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> str:
 
 def _parse_wiki_response(raw: str) -> list[VaultFile]:
     try:
-        text = raw.strip()
-        if text.startswith("```"):
-            m = _CODE_FENCE_RE.search(text)
-            if m:
-                text = m.group(1).strip()
+        text = _strip_fence(raw.strip())
         data = json.loads(text)
         return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)]
     except (json.JSONDecodeError, AttributeError):
@@ -149,7 +155,7 @@ def analyze_gaps(config: JobConfig, wiki_files: list[VaultFile]) -> list[GapItem
         f"GENERATED FILES:\n{file_list}",
     )
     try:
-        data = json.loads(raw.strip())
+        data = json.loads(_strip_fence(raw))
         if not isinstance(data, list):
             return []
         gaps = []

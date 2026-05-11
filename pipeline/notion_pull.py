@@ -76,7 +76,7 @@ def _page_to_row(page: dict) -> dict:
         "Customers": text("Customers"),
         "Product": text("Product"),
         "SubProduct": text("SubProduct"),
-        "ARR": text("ARR"),
+        "ARR": number("ARR"),
         "Renewal Date": date_prop("Renewal Date"),
         "Countdown": number("Countdown"),
         "Status": text("Status"),
@@ -129,7 +129,7 @@ def parse_notion_rows(rows: list[dict]) -> list[CustomerRecord]:
         usage_limit = _optional_int(row.get("Usage Limit"))
 
         records.append(CustomerRecord(
-            name=row.get("Customers", "").strip(),
+            name=row.get("Customers", "").strip().replace("/", "-"),
             product=row.get("Product", "").strip(),
             sub_product=row.get("SubProduct", "").strip(),
             arr=arr,

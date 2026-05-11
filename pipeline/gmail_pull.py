@@ -124,12 +124,17 @@ _Pending analysis_
 
 
 def _extract_body(message: dict) -> str:
-    try:
-        data = message["payload"]["body"].get("data", "")
-        if data:
-            return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
-    except (KeyError, ValueError):
-        pass
+    payload = message.get("payload", {})
+    # Simple (non-multipart) body
+    data = payload.get("body", {}).get("data", "")
+    if data:
+        return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
+    # Multipart: walk parts for text/plain
+    for part in payload.get("parts", []):
+        if part.get("mimeType") == "text/plain":
+            data = part.get("body", {}).get("data", "")
+            if data:
+                return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
     return ""
 
 

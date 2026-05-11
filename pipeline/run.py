@@ -58,14 +58,25 @@ def main():
     for g in gaps:
         print(f"  - [{g.category}] {g.description}")
 
-    print("Step 4: Pulling Notion data...")
+    print("Step 4: Pulling org data...")
     customers = pull_customers(cfg)
     cfg.product_lines = list({c.product for c in customers})
     customer_files = [build_intelligence_summary(c) for c in customers]
     domains_vf = build_customer_domains(customers)
     hub_nodes = build_hub_nodes(customers)
-    all_customer_files = customer_files + [domains_vf]
     print(f"  Pulled {len(customers)} customers across {cfg.product_lines}")
+
+    print("Step 4b: Pulling Gmail emails...")
+    from .gmail_pull import pull_emails
+    email_stubs = pull_emails(cfg, json.loads(domains_vf.content))
+    print(f"  Pulled {len(email_stubs)} email stubs")
+
+    print("Step 4c: Pulling read.ai transcripts...")
+    from .readai_pull import pull_transcripts
+    transcript_stubs = pull_transcripts(cfg, json.loads(domains_vf.content))
+    print(f"  Pulled {len(transcript_stubs)} transcript stubs")
+
+    all_customer_files = customer_files + [domains_vf] + email_stubs + transcript_stubs
 
     print("Step 5: Building vault ZIP...")
     zip_bytes = build_vault(cfg, wiki_files, customers, all_customer_files, hub_nodes, gaps)
