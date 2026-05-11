@@ -6,3 +6,4 @@ node_modules/
 *.pyo
 .env
 *.log
+.worktrees/
