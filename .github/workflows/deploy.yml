@@ -1,0 +1,61 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$ECR_REGISTRY/entropy-builder:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/entropy-builder:$IMAGE_TAG"
+          docker tag "$ECR_REGISTRY/entropy-builder:$IMAGE_TAG" "$ECR_REGISTRY/entropy-builder:latest"
+          docker push "$ECR_REGISTRY/entropy-builder:latest"
+
+      - name: Update ECS web service
+        run: |
+          aws ecs update-service \
+            --cluster entropy-cluster \
+            --service entropy-web-service \
+            --force-new-deployment \
+            --region us-east-1
+
+      - name: Update ECS worker service
+        run: |
+          aws ecs update-service \
+            --cluster entropy-cluster \
+            --service entropy-worker-service \
+            --force-new-deployment \
+            --region us-east-1
+
+      - name: Wait for web service to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster entropy-cluster \
+            --services entropy-web-service \
+            --region us-east-1
+          echo "Deployment complete"
