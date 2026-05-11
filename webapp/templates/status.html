@@ -28,6 +28,10 @@
   <style>
     @keyframes pulse-clay { 0%,100% { opacity:1; } 50% { opacity:.4; } }
     .pulse-clay { animation: pulse-clay 1.4s ease-in-out infinite; }
+    @keyframes log-in { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform:none; } }
+    .log-line { animation: log-in .35s ease-out both; }
+    @keyframes caret { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
+    .caret { animation: caret 1s steps(1) infinite; }
     @keyframes draw-edge { from { stroke-dashoffset: 200; } to { stroke-dashoffset: 0; } }
     .edge-live { stroke-dasharray: 200; animation: draw-edge 2s ease-out forwards; }
     .step-row[data-status="done"] .step-icon { background:#3D5A4B; color:#F2EFE7; }
@@ -98,10 +102,39 @@
             <p id="eta" class="text-xs text-ink/45 font-mono">~2h remaining</p>
           </div>
         </div>
-        <div class="w-full bg-ink/8 rounded-full h-1.5 mb-6">
+        <div class="w-full bg-ink/8 rounded-full h-1.5 mb-5">
           <div id="progress-bar" class="bg-clay h-1.5 rounded-full transition-all duration-700" style="width:0%"></div>
         </div>
+
+        <!-- Currently processing line (shown when state.current_activity is present) -->
+        <div id="current-activity" class="hidden bg-stone/60 rounded-lg px-4 py-3 mb-5 font-mono text-xs">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-clay">→</span>
+              <span class="text-ink/55 uppercase tracking-[0.12em] flex-shrink-0" id="activity-verb">Processing</span>
+              <span class="text-ink truncate font-medium" id="activity-target">—</span>
+            </div>
+            <span class="text-ink/45 tabular-nums flex-shrink-0" id="activity-counter"></span>
+          </div>
+        </div>
+
         <div id="steps-list" class="space-y-1 border-t border-ink/8 pt-5"></div>
+      </div>
+
+      <!-- Activity log (terminal style, collapsible) -->
+      <div id="activity-log-card" class="hidden bg-ink text-paper rounded-2xl border border-ink/10 mb-6 overflow-hidden">
+        <button id="log-toggle" class="w-full flex items-center justify-between px-5 py-3 border-b border-paper/10 hover:bg-paper/5 transition">
+          <div class="flex items-center gap-2.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-clay pulse-clay"></span>
+            <span class="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/55">Activity log</span>
+            <span class="font-mono text-[10px] text-paper/35" id="log-count">0 events</span>
+          </div>
+          <svg id="log-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" class="text-paper/55 transition-transform"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+        <div id="log-body" class="px-5 py-4 font-mono text-[11px] leading-[1.7] max-h-72 overflow-y-auto" style="scrollbar-width:thin; scrollbar-color:rgba(242,239,231,0.2) transparent;">
+          <div id="log-list"></div>
+          <div class="text-paper/35 mt-1"><span class="caret">▊</span></div>
+        </div>
       </div>
 
       <!-- Gaps card -->
@@ -189,7 +222,7 @@
           </svg>
         </div>
 
-        <div class="mt-5 pt-5 border-t border-ink/8 grid grid-cols-2 gap-4">
+        <div class="mt-5 pt-5 border-t border-ink/8 grid grid-cols-2 gap-x-4 gap-y-4">
           <div>
             <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Nodes</p>
             <p class="font-display text-2xl font-bold tabular-nums" id="node-count">0<span class="text-ink/30 text-base font-normal"> / 8</span></p>
@@ -197,6 +230,14 @@
           <div>
             <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Edges</p>
             <p class="font-display text-2xl font-bold tabular-nums" id="edge-count">0<span class="text-ink/30 text-base font-normal"> / 12</span></p>
+          </div>
+          <div>
+            <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Tokens read</p>
+            <p class="font-display text-2xl font-bold tabular-nums" id="tokens-total">0</p>
+          </div>
+          <div>
+            <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-ink/50 mb-1">Elapsed</p>
+            <p class="font-display text-2xl font-bold tabular-nums" id="elapsed">0m</p>
           </div>
         </div>
       </div>
@@ -247,6 +288,109 @@ var pollingInterval;
 var gapsShown = false;
 var renderedNodes = new Set();
 var renderedEdges = new Set();
+var renderedLogTs = new Set();
+var jobStartedAt = null;
+var logCollapsed = false;
+
+// Verb dictionary — maps activity 'kind' to display verb + symbol
+var ACTIVITY_VERBS = {
+  file:       { verb: 'Reading',     symbol: '→' },
+  tokens:     { verb: 'Tokenizing',  symbol: '·' },
+  synthesize: { verb: 'Synthesizing',symbol: '✦' },
+  embed:      { verb: 'Embedding',   symbol: '◇' },
+  notion:     { verb: 'Importing',   symbol: '↓' },
+  gmail:      { verb: 'Fetching',    symbol: '↓' },
+  phase:      { verb: 'Phase',       symbol: '▸' },
+  info:       { verb: 'Processing',  symbol: '→' },
+  error:      { verb: 'Error',       symbol: '!' }
+};
+
+function fmtNum(n) {
+  if (n == null) return '0';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k';
+  return n.toString();
+}
+
+function fmtElapsed(seconds) {
+  if (!seconds || seconds < 60) return Math.max(0, Math.floor(seconds || 0)) + 's';
+  var m = Math.floor(seconds / 60);
+  if (m < 60) return m + 'm';
+  var h = Math.floor(m / 60);
+  return h + 'h ' + (m % 60) + 'm';
+}
+
+function fmtTime(ts) {
+  var d = new Date(ts * 1000);
+  return String(d.getHours()).padStart(2,'0') + ':' +
+         String(d.getMinutes()).padStart(2,'0') + ':' +
+         String(d.getSeconds()).padStart(2,'0');
+}
+
+function renderCurrentActivity(activity) {
+  var box = document.getElementById('current-activity');
+  if (!activity || !activity.file) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  var v = ACTIVITY_VERBS[activity.kind] || ACTIVITY_VERBS.info;
+  document.getElementById('activity-verb').textContent = v.verb;
+  document.getElementById('activity-target').textContent = activity.file;
+  var counter = '';
+  if (activity.index != null && activity.total != null) {
+    counter = activity.index + ' / ' + activity.total;
+  } else if (activity.tokens != null) {
+    counter = fmtNum(activity.tokens) + ' tokens';
+  }
+  document.getElementById('activity-counter').textContent = counter;
+}
+
+function renderActivityLog(log) {
+  if (!log || log.length === 0) return;
+  var card = document.getElementById('activity-log-card');
+  card.classList.remove('hidden');
+  var list = document.getElementById('log-list');
+  var added = 0;
+  log.forEach(function(entry) {
+    var key = entry.ts + '|' + entry.message;
+    if (renderedLogTs.has(key)) return;
+    renderedLogTs.add(key);
+    added++;
+
+    var row = document.createElement('div');
+    row.className = 'log-line flex gap-3 text-paper/70';
+    var v = ACTIVITY_VERBS[entry.kind] || ACTIVITY_VERBS.info;
+
+    var ts = document.createElement('span');
+    ts.className = 'text-paper/35 flex-shrink-0';
+    ts.textContent = fmtTime(entry.ts);
+
+    var sym = document.createElement('span');
+    sym.className = 'flex-shrink-0 ' + (entry.kind === 'error' ? 'text-red-400' : entry.kind === 'phase' ? 'text-clay' : 'text-paper/45');
+    sym.textContent = v.symbol;
+
+    var msg = document.createElement('span');
+    msg.className = 'min-w-0 break-words ' + (entry.kind === 'phase' ? 'text-paper font-medium uppercase tracking-[0.12em] text-[10px]' : '');
+    if (entry.tokens != null && entry.kind === 'tokens') {
+      msg.innerHTML = '<span class="text-paper/50">└</span> ' + fmtNum(entry.tokens) + ' tokens';
+    } else {
+      msg.textContent = entry.message;
+    }
+
+    row.appendChild(ts); row.appendChild(sym); row.appendChild(msg);
+    list.appendChild(row);
+  });
+
+  document.getElementById('log-count').textContent = renderedLogTs.size + ' event' + (renderedLogTs.size === 1 ? '' : 's');
+
+  // Auto-scroll to bottom unless user has scrolled up
+  if (added > 0 && !logCollapsed) {
+    var body = document.getElementById('log-body');
+    var atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
+    if (atBottom) body.scrollTop = body.scrollHeight;
+  }
+}
 
 function renderStepsList(stepIndex, status) {
   var list = document.getElementById('steps-list');
@@ -400,6 +544,28 @@ async function pollStatus() {
 
     renderStepsList(state.step_index, state.status);
     renderGraph(state.step_index, state.status);
+    renderCurrentActivity(state.current_activity);
+    renderActivityLog(state.activity_log);
+
+    // Track job start (first poll where we get a started_at, or first poll period)
+    if (state.started_at && !jobStartedAt) jobStartedAt = state.started_at * 1000;
+    if (!jobStartedAt) jobStartedAt = Date.now();
+
+    // Cumulative stats
+    if (state.tokens_total != null) {
+      document.getElementById('tokens-total').textContent = fmtNum(state.tokens_total);
+    }
+    var elapsedSec = Math.floor((Date.now() - jobStartedAt) / 1000);
+    document.getElementById('elapsed').textContent = fmtElapsed(elapsedSec);
+
+    // ETA — prefer server-supplied, fall back to phase-based estimate
+    var etaEl = document.getElementById('eta');
+    if (state.eta_seconds != null && state.status !== 'complete') {
+      etaEl.textContent = '~' + fmtElapsed(state.eta_seconds) + ' remaining';
+    } else if (state.status !== 'complete') {
+      var remaining = Math.max(0, (state.total_steps - state.step_index) * 18 * 60);
+      etaEl.textContent = '~' + fmtElapsed(remaining) + ' remaining';
+    }
 
     if (state.gaps && state.gaps.length > 0) { showGaps(state.gaps); }
 
@@ -408,7 +574,8 @@ async function pollStatus() {
       document.getElementById('status-subtitle').textContent = 'Your vault is ready to download.';
       document.getElementById('header-status').textContent = 'Complete';
       document.getElementById('graph-status').textContent = 'Complete';
-      document.getElementById('eta').textContent = 'Done';
+      document.getElementById('eta').textContent = 'Done in ' + fmtElapsed(elapsedSec);
+      document.getElementById('current-activity').classList.add('hidden');
       document.getElementById('download-section').classList.remove('hidden');
       if (state.vault_download_url) { document.getElementById('download-vault').href = state.vault_download_url; }
       if (state.claude_settings_download_url) {
@@ -429,7 +596,15 @@ async function pollStatus() {
   } catch(e) { /* network hiccup — retry next tick */ }
 }
 
-pollingInterval = setInterval(pollStatus, 10000);
+// Collapsible log
+document.getElementById('log-toggle').addEventListener('click', function() {
+  logCollapsed = !logCollapsed;
+  document.getElementById('log-body').style.display = logCollapsed ? 'none' : '';
+  document.getElementById('log-chevron').style.transform = logCollapsed ? 'rotate(-90deg)' : '';
+});
+
+// Faster polling — 5s feels live without being expensive
+pollingInterval = setInterval(pollStatus, 5000);
 pollStatus();
 </script>
 

@@ -65,7 +65,8 @@ Prompts must be specific. Bad: "Add more frameworks." Good: "What systems do you
 Be concise — 3 gaps maximum."""
 
 
-def _call_kimi(api_key: str, system: str, user_content: str) -> str:
+def _call_kimi(api_key: str, system: str, user_content: str) -> tuple[str, int]:
+    """Returns (generated_text, total_tokens). Tokens fall back to char-based estimate."""
     payload = {
         "model": MODEL,
         "max_tokens": 32768,
@@ -98,6 +99,7 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> str:
             )
             resp.raise_for_status()
             parts = []
+            usage_tokens = 0
             for raw_line in resp.iter_lines():
                 if not raw_line:
                     continue
@@ -110,10 +112,15 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> str:
                 chunk = json.loads(data)
                 choices = chunk.get("choices", [])
                 if not choices:
+                    usage = chunk.get("usage") or {}
+                    if usage.get("total_tokens"):
+                        usage_tokens = usage["total_tokens"]
                     continue
                 delta = choices[0]["delta"].get("content") or ""
                 parts.append(delta)
-            return "".join(parts)
+            result = "".join(parts)
+            tokens = usage_tokens or ((len(user_content) + len(result)) // 4)
+            return result, tokens
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code < 500 and e.response.status_code != 429:
                 raise  # don't retry 4xx except 429
@@ -132,20 +139,33 @@ def _parse_wiki_response(raw: str) -> list[VaultFile]:
         return []
 
 
-def generate_wiki(config: JobConfig, ingested_files: list[VaultFile]) -> list[VaultFile]:
-    """Pass 1: generate wiki from interview answers + ingested content."""
+def generate_wiki(
+    config: JobConfig,
+    ingested_files: list[VaultFile],
+    on_chunk=None,
+) -> list[VaultFile]:
+    """Pass 1: generate wiki from interview answers + ingested content.
+
+    on_chunk(chunk_index, total_chunks, tokens) called after each Kimi call.
+    """
     user_content = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
     for f in ingested_files:
         user_content += f"FILE: {f.path}\n{f.content[:3000]}\n\n"
 
     if len(user_content) <= CHUNK_SIZE:
-        raw = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, user_content)
+        raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, user_content)
+        if on_chunk:
+            on_chunk(1, 1, tokens)
         return _parse_wiki_response(raw)
 
-    return _generate_wiki_chunked(config, ingested_files)
+    return _generate_wiki_chunked(config, ingested_files, on_chunk)
 
 
-def _generate_wiki_chunked(config: JobConfig, ingested_files: list[VaultFile]) -> list[VaultFile]:
+def _generate_wiki_chunked(
+    config: JobConfig,
+    ingested_files: list[VaultFile],
+    on_chunk=None,
+) -> list[VaultFile]:
     interview_block = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
     chunks = [interview_block]
     for f in ingested_files:
@@ -158,7 +178,9 @@ def _generate_wiki_chunked(config: JobConfig, ingested_files: list[VaultFile]) -
     merged: dict[str, str] = {}
     for i, chunk in enumerate(chunks):
         prefix = "CONTINUE and EXTEND the wiki with additional content. Merge with prior output.\n\n" if i > 0 else ""
-        raw = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, prefix + chunk)
+        raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, prefix + chunk)
+        if on_chunk:
+            on_chunk(i + 1, len(chunks), tokens)
         for vf in _parse_wiki_response(raw):
             if vf.path in merged and vf.path != "TRAVERSAL-INDEX.md":
                 merged[vf.path] += "\n\n" + vf.content
@@ -171,7 +193,7 @@ def _generate_wiki_chunked(config: JobConfig, ingested_files: list[VaultFile]) -
 def analyze_gaps(config: JobConfig, wiki_files: list[VaultFile]) -> list[GapItem]:
     """Pass 2: identify gaps in the generated wiki."""
     file_list = "\n".join(f"- {f.path}" for f in wiki_files)
-    raw = _call_kimi(
+    raw, _ = _call_kimi(
         config.fireworks_api_key,
         _PASS2_SYSTEM,
         f"GENERATED FILES:\n{file_list}",
