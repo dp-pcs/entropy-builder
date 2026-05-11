@@ -180,3 +180,6 @@ def create_app() -> FastAPI:
         return {"upload_url": upload_url, "s3_key": s3_key}
 
     return app
+
+
+app = create_app()
