@@ -170,17 +170,25 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
         _update_state(job_id, step="gmail", step_index=4)
         log_activity(job_id, "Pulling Gmail history", kind="phase")
         set_current_activity(job_id, "Gmail inbox", kind="gmail")
-        email_files = gmail_pull.pull_emails(config, domains)
+        try:
+            email_files = gmail_pull.pull_emails(config, domains)
+            log_activity(job_id, f"Fetched {len(email_files)} email thread(s)", kind="info")
+        except Exception as exc:
+            email_files = []
+            log_activity(job_id, f"Gmail skipped: {exc}", kind="error")
         set_current_activity(job_id, None)
-        log_activity(job_id, f"Fetched {len(email_files)} email thread(s)", kind="info")
 
         # --- read.ai ---
         _update_state(job_id, step="readai", step_index=5)
         log_activity(job_id, "Pulling read.ai transcripts", kind="phase")
         set_current_activity(job_id, "read.ai", kind="file")
-        transcript_files = readai_pull.pull_transcripts(config, domains)
+        try:
+            transcript_files = readai_pull.pull_transcripts(config, domains)
+            log_activity(job_id, f"Fetched {len(transcript_files)} transcript(s)", kind="info")
+        except Exception as exc:
+            transcript_files = []
+            log_activity(job_id, f"read.ai skipped: {exc}", kind="error")
         set_current_activity(job_id, None)
-        log_activity(job_id, f"Fetched {len(transcript_files)} transcript(s)", kind="info")
 
         # --- Assembly ---
         _update_state(job_id, step="assembly", step_index=6)
