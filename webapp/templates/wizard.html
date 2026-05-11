@@ -50,11 +50,11 @@
     <p class="text-slate-500 mb-6">Used to personalize your vault and filter Notion to your accounts.</p>
     <div class="space-y-4">
       <div>
-        <label class="block text-sm font-medium mb-1">Full name</label>
+        <label for="user-name" class="block text-sm font-medium mb-1">Full name</label>
         <input id="user-name" type="text" placeholder="e.g. Alice Johnson" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
       </div>
       <div id="account-manager-field">
-        <label class="block text-sm font-medium mb-1">Name as it appears in Notion's Account Manager field</label>
+        <label for="account-manager-name" class="block text-sm font-medium mb-1">Name as it appears in Notion's Account Manager field</label>
         <input id="account-manager-name" type="text" placeholder="Usually same as your full name" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
       </div>
     </div>
@@ -79,7 +79,7 @@
       </label>
     </div>
     <div id="data-upload-area" class="hidden">
-      <label class="block text-sm font-medium mb-1">Upload your vault or notes (ZIP, OPML, PDF, .md, .docx)</label>
+      <label for="vault-upload" class="block text-sm font-medium mb-1">Upload your vault or notes (ZIP, OPML, PDF, .md, .docx)</label>
       <input type="file" id="vault-upload" accept=".zip,.opml,.pdf,.md,.txt,.docx" multiple
              onchange="uploadFile(this, 'vault')"
              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
@@ -93,7 +93,7 @@
     <p class="text-slate-500 mb-6">List 3–10 books. These become the foundation of your knowledge wiki.</p>
     <textarea id="books-input" rows="5" placeholder="Never Split the Difference&#10;Atomic Habits&#10;The 48 Laws of Power" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
     <div class="mt-4">
-      <label class="block text-sm font-medium mb-1">Upload Kindle highlights, book notes, or reading list (optional)</label>
+      <label for="books-upload" class="block text-sm font-medium mb-1">Upload Kindle highlights, book notes, or reading list (optional)</label>
       <input type="file" id="books-upload" accept=".pdf,.md,.txt,.docx,.html,.csv"
              onchange="uploadFile(this, 'books')"
              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
@@ -107,7 +107,7 @@
     <p class="text-slate-500 mb-6">What mental models, sales methodologies, or decision frameworks do you apply regularly?</p>
     <textarea id="frameworks-input" rows="5" placeholder="MEDDICC for deal qualification&#10;SPIN Selling for discovery&#10;Ackerman bargaining for negotiation" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
     <div class="mt-4">
-      <label class="block text-sm font-medium mb-1">Attach any notes about frameworks you use (optional)</label>
+      <label for="frameworks-upload" class="block text-sm font-medium mb-1">Attach any notes about frameworks you use (optional)</label>
       <input type="file" id="frameworks-upload" accept=".pdf,.md,.txt,.docx"
              onchange="uploadFile(this, 'frameworks')"
              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
@@ -121,11 +121,11 @@
     <p class="text-slate-500 mb-6">This calibrates how the system coaches you — pushing toward growth edges, not just validating instincts.</p>
     <div class="space-y-4">
       <div>
-        <label class="block text-sm font-medium mb-1">DiSC, Enneagram, StrengthsFinder, MBTI (any you know)</label>
+        <label for="psych-input" class="block text-sm font-medium mb-1">DiSC, Enneagram, StrengthsFinder, MBTI (any you know)</label>
         <input id="psych-input" type="text" placeholder="e.g. ENTJ, Achiever, High D, Type 8" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Upload your assessment results PDF or image (optional)</label>
+        <label for="psych-upload" class="block text-sm font-medium mb-1">Upload your assessment results PDF or image (optional)</label>
         <input type="file" id="psych-upload" accept=".pdf,.png,.jpg,.jpeg"
                onchange="uploadFile(this, 'psych')"
                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
@@ -139,15 +139,15 @@
     <h2 class="text-2xl font-bold mb-2">How you think and what you want</h2>
     <div class="space-y-4">
       <div>
-        <label class="block text-sm font-medium mb-1">How do you make decisions? What's your thinking style?</label>
+        <label for="decision-style" class="block text-sm font-medium mb-1">How do you make decisions? What's your thinking style?</label>
         <textarea id="decision-style" rows="3" placeholder="e.g. I'm fast and intuitive, sometimes miss detail. I trust frameworks over gut when stakes are high." class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">What do you want this system to help you with most?</label>
+        <label for="system-goals" class="block text-sm font-medium mb-1">What do you want this system to help you with most?</label>
         <textarea id="system-goals" rows="3" placeholder="e.g. Renewal prep, spotting at-risk accounts early, drafting emails faster." class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Any other files to include? (optional)</label>
+        <label for="misc-upload" class="block text-sm font-medium mb-1">Any other files to include? (optional)</label>
         <input type="file" id="misc-upload" accept=".pdf,.md,.txt,.docx,.zip"
                onchange="uploadFile(this, 'misc')"
                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700">
@@ -182,7 +182,7 @@
       <p id="notion-status" class="mt-3 text-sm text-center text-slate-400">Not connected</p>
     </div>
     <div id="team-member-section" class="hidden">
-      <label class="block text-sm font-medium mb-2">Select your direct reports (your vault will cover their portfolios)</label>
+      <label for="team-members" class="block text-sm font-medium mb-2">Select your direct reports (your vault will cover their portfolios)</label>
       <select id="team-members" multiple class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm h-32"></select>
       <p class="text-xs text-slate-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
     </div>
@@ -193,7 +193,7 @@
     <h2 class="text-2xl font-bold mb-2">Almost done</h2>
     <p class="text-slate-500 mb-6">One optional connection, then we'll build your vault.</p>
     <div class="mb-6">
-      <label class="block text-sm font-medium mb-1">read.ai API key (optional — enables meeting transcript ingestion)</label>
+      <label for="readai-key" class="block text-sm font-medium mb-1">read.ai API key (optional — enables meeting transcript ingestion)</label>
       <input id="readai-key" type="password" placeholder="Find it at app.read.ai / Settings / API" class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm">
     </div>
     <div class="bg-indigo-50 rounded-xl p-5 mb-6 text-sm text-slate-600 space-y-1">
@@ -304,7 +304,11 @@ function nextStep() {
 }
 
 function prevStep() {
-  if (currentStep > 1) { currentStep--; showStep(currentStep); }
+  if (currentStep > 1) {
+    saveStepData(currentStep);
+    currentStep--;
+    showStep(currentStep);
+  }
 }
 
 async function uploadFile(inputEl, purpose) {
@@ -332,11 +336,18 @@ async function uploadFile(inputEl, purpose) {
   statusEl.textContent = files.length + ' file(s) uploaded';
 }
 
+var _oauthHandlers = {};
+
 function openOAuth(provider) {
+  if (_oauthHandlers[provider]) {
+    window.removeEventListener('message', _oauthHandlers[provider]);
+    delete _oauthHandlers[provider];
+  }
   var popup = window.open('/oauth/' + provider + '?session_id=' + SESSION_ID, 'oauth', 'width=600,height=700,left=200,top=100');
   function handler(e) {
     if (e.data && e.data.provider === provider && e.origin === window.location.origin) {
       window.removeEventListener('message', handler);
+      delete _oauthHandlers[provider];
       var statusEl = document.getElementById(provider + '-status');
       if (e.data.success) {
         statusEl.textContent = e.data.verified ? 'Connected and verified' : 'Connected (verification pending)';
@@ -346,6 +357,7 @@ function openOAuth(provider) {
       }
     }
   }
+  _oauthHandlers[provider] = handler;
   window.addEventListener('message', handler);
 }
 
