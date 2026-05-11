@@ -170,21 +170,15 @@
     <p class="text-xs text-slate-400 mt-4 text-center">A popup will open for Google sign-in. After connecting, the system runs a test query to verify it works.</p>
   </div>
 
-  <!-- Step 9: Connect Notion -->
+  <!-- Step 9: Team members (managers/leadership only) -->
   <div id="step-9" class="step hidden">
-    <h2 class="text-2xl font-bold mb-2">Connect Notion</h2>
-    <p class="text-slate-500 mb-6">Grants read access to your shared customer database. A test query verifies the connection before you proceed.</p>
-    <div class="p-5 border-2 rounded-xl mb-4">
-      <button onclick="openOAuth('notion')" id="notion-connect-btn"
-              class="w-full bg-white border-2 border-slate-300 rounded-xl py-3 px-4 font-medium hover:border-indigo-400 flex items-center justify-center gap-3">
-        Connect Notion
-      </button>
-      <p id="notion-status" class="mt-3 text-sm text-center text-slate-400">Not connected</p>
-    </div>
-    <div id="team-member-section" class="hidden">
-      <label for="team-members" class="block text-sm font-medium mb-2">Select your direct reports (your vault will cover their portfolios)</label>
+    <h2 class="text-2xl font-bold mb-2">Your team</h2>
+    <p class="text-slate-500 mb-6">Select your direct reports — your vault will cover their portfolios as well.</p>
+    <div id="team-member-section">
+      <label for="team-members" class="block text-sm font-medium mb-2">Select your direct reports</label>
       <select id="team-members" multiple class="w-full border-2 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 text-sm h-32"></select>
       <p class="text-xs text-slate-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
+      <p id="team-members-status" class="text-sm text-slate-400 mt-2"></p>
     </div>
   </div>
 
@@ -250,10 +244,14 @@ function showStep(n) {
       });
     });
   }
-  if (n === 9 && (formData.user_role === 'manager' || formData.user_role === 'leadership')) {
-    document.getElementById('team-member-section').classList.remove('hidden');
-    if (document.getElementById('team-members').options.length === 0) {
-      loadTeamMembers();
+  if (n === 9) {
+    if (formData.user_role === 'manager' || formData.user_role === 'leadership') {
+      document.getElementById('team-member-section').classList.remove('hidden');
+      if (document.getElementById('team-members').options.length === 0) {
+        loadTeamMembers();
+      }
+    } else {
+      document.getElementById('team-member-section').classList.add('hidden');
     }
   }
   if (n === 10) {
@@ -362,9 +360,14 @@ function openOAuth(provider) {
 }
 
 async function loadTeamMembers() {
+  var statusEl = document.getElementById('team-members-status');
+  statusEl.textContent = 'Loading…';
   try {
-    var resp = await fetch('/api/notion/account-managers?session_id=' + SESSION_ID);
-    if (!resp.ok) return;
+    var resp = await fetch('/api/notion/account-managers');
+    if (!resp.ok) {
+      statusEl.textContent = 'Could not load team members';
+      return;
+    }
     var data = await resp.json();
     var sel = document.getElementById('team-members');
     data.managers.forEach(function(name) {
@@ -373,7 +376,10 @@ async function loadTeamMembers() {
       opt.textContent = name;  // textContent prevents XSS
       sel.appendChild(opt);
     });
-  } catch(e) { /* non-fatal */ }
+    statusEl.textContent = data.managers.length + ' names loaded';
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Could not load team members';
+  }
 }
 
 async function submitWizard() {
