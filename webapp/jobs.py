@@ -13,6 +13,7 @@ def _now() -> str:
 
 
 def _update_state(job_id: str, **kwargs) -> None:
+    """Update job state in S3. Never include credential fields (tokens, API keys)."""
     state = s3.read_job_state(job_id) or {}
     state.update(kwargs)
     state["updated_at"] = _now()
