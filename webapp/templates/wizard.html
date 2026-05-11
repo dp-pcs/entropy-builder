@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Entropy — Build My System</title>
-  <link rel="icon" href="/static/entropy-favicon-32.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
@@ -32,7 +31,17 @@
 
   <header class="border-b border-charcoal/10 bg-cream/80 backdrop-blur-sm sticky top-0 z-10">
     <div class="max-w-4xl mx-auto px-6 py-4">
-      <img src="/static/entropy-logo-horizontal.png" alt="Entropy" class="h-8">
+      <svg viewBox="0 0 120 28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Entropy">
+        <circle cx="8" cy="14" r="3" fill="#4A6B5C"/>
+        <circle cx="18" cy="7" r="2" fill="#2B2D42"/>
+        <circle cx="18" cy="21" r="2.5" fill="#2B2D42"/>
+        <circle cx="28" cy="14" r="1.5" fill="#4A6B5C" opacity=".6"/>
+        <line x1="8" y1="14" x2="18" y2="7" stroke="#2B2D42" stroke-width="1.2" opacity=".3"/>
+        <line x1="8" y1="14" x2="18" y2="21" stroke="#2B2D42" stroke-width="1.2" opacity=".3"/>
+        <line x1="18" y1="7" x2="28" y2="14" stroke="#4A6B5C" stroke-width="1" opacity=".3"/>
+        <line x1="18" y1="21" x2="28" y2="14" stroke="#4A6B5C" stroke-width="1" opacity=".3"/>
+        <text x="36" y="19" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="16" fill="#2B2D42">entropy</text>
+      </svg>
     </div>
   </header>
 
@@ -374,7 +383,14 @@ async function uploadFile(inputEl, purpose) {
   var files = Array.from(inputEl.files);
   if (!files.length) return;
   var statusEl = document.getElementById(purpose + '-upload-status');
+  var nextBtn = document.getElementById('next-btn');
+
+  // Disable Continue while uploading
+  nextBtn.disabled = true;
+  nextBtn.textContent = 'Uploading...';
   statusEl.textContent = 'Uploading ' + files.length + ' file(s)...';
+  statusEl.className = 'text-sm mt-2 block text-charcoal/50';
+
   var successCount = 0;
   var errorCount = 0;
   for (var i = 0; i < files.length; i++) {
@@ -385,9 +401,10 @@ async function uploadFile(inputEl, purpose) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({session_id: SESSION_ID, filename: file.name, content_type: file.type || 'application/octet-stream'})
       });
-      if (!resp.ok) throw new Error('Presign failed');
+      if (!resp.ok) throw new Error('Presign failed ' + resp.status);
       var data = await resp.json();
-      await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
+      var putResp = await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
+      if (!putResp.ok) throw new Error('S3 upload failed ' + putResp.status);
       formData.s3_keys.push(data.s3_key);
       successCount++;
       if (purpose === 'vault') vaultUploaded = true;
@@ -395,10 +412,17 @@ async function uploadFile(inputEl, purpose) {
       errorCount++;
     }
   }
+
+  // Re-enable Continue
+  nextBtn.disabled = false;
+  nextBtn.textContent = 'Continue';
+
   if (successCount > 0) {
-    statusEl.textContent = successCount + ' file(s) uploaded' + (errorCount > 0 ? ' (' + errorCount + ' skipped)' : '');
+    statusEl.textContent = successCount + ' file(s) uploaded' + (errorCount > 0 ? ' (' + errorCount + ' skipped)' : '') + ' ✓';
+    statusEl.className = 'text-sm mt-2 block text-sage font-medium';
   } else {
     statusEl.textContent = 'Upload failed — please try again';
+    statusEl.className = 'text-sm mt-2 block text-red-600';
   }
 }
 
