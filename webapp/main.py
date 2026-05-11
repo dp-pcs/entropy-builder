@@ -139,4 +139,37 @@ def create_app() -> FastAPI:
         job_id = jobs.create_job(config_dict, req.s3_keys)
         return {"job_id": job_id}
 
+    @app.get("/api/job/{job_id}/status")
+    def job_status(job_id: str):
+        state = s3.read_job_state(job_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        result = dict(state)
+        if state.get("vault_key"):
+            result["vault_download_url"] = s3.presign_download(state["vault_key"])
+        if state.get("claude_settings_key"):
+            result["claude_settings_download_url"] = s3.presign_download(state["claude_settings_key"])
+        return result
+
+    @app.get("/job/{job_id}")
+    def job_status_page(request: Request, job_id: str):
+        return templates.TemplateResponse(request, "status.html", {"job_id": job_id})
+
+    class GapPresignRequest(BaseModel):
+        session_id: str
+        filename: str
+        content_type: str
+
+    @app.post("/api/job/{job_id}/gaps/presign")
+    def gap_presign(job_id: str, req: GapPresignRequest):
+        state = s3.read_job_state(job_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        safe_name = re.sub(r"[^\w.\-]", "_", req.filename.rsplit("/", 1)[-1])
+        s3_key = f"jobs/{job_id}/gaps/{safe_name}"
+        upload_url = s3.presign_upload(s3_key, req.content_type)
+        gap_keys = list(state.get("gap_s3_keys", [])) + [s3_key]
+        s3.write_job_state(job_id, {**state, "gap_s3_keys": gap_keys})
+        return {"upload_url": upload_url, "s3_key": s3_key}
+
     return app

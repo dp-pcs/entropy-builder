@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entropy — Building Your System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+<div class="max-w-2xl mx-auto px-6 py-16">
+
+  <div class="text-center mb-12">
+    <h1 class="text-3xl font-bold text-indigo-700 mb-2">Building your system</h1>
+    <p class="text-slate-500" id="status-subtitle">Processing your data — this takes about 2 hours</p>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <div class="flex justify-between text-sm text-slate-500 mb-2">
+      <span id="current-step-label">Starting...</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="w-full bg-slate-200 rounded-full h-3 mb-4">
+      <div id="progress-bar" class="bg-indigo-600 h-3 rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+    <div id="steps-list" class="space-y-2"></div>
+  </div>
+
+  <div id="gaps-section" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
+    <h2 class="text-lg font-semibold text-amber-800 mb-1">A few things could make your vault stronger</h2>
+    <p class="text-sm text-amber-700 mb-4">Upload these now to fill gaps — or skip and the system will proceed.</p>
+    <div id="gaps-list" class="space-y-4"></div>
+  </div>
+
+  <div id="download-section" class="hidden bg-green-50 border border-green-200 rounded-2xl p-6 mb-6">
+    <h2 class="text-xl font-bold text-green-800 mb-2">Your vault is ready</h2>
+    <p class="text-slate-600 text-sm mb-4">Download your vault and Claude settings, then follow the setup guide.</p>
+    <div class="space-y-3">
+      <a id="download-vault" href="#" class="flex items-center justify-between bg-indigo-600 text-white rounded-xl px-5 py-3 hover:bg-indigo-700 transition font-medium">
+        <span>Download entropy-vault.zip</span><span>&#8595;</span>
+      </a>
+      <a id="download-settings" href="#" class="flex items-center justify-between bg-white border-2 border-indigo-300 text-indigo-700 rounded-xl px-5 py-3 hover:border-indigo-500 transition font-medium">
+        <span>Download claude_settings.json</span><span>&#8595;</span>
+      </a>
+    </div>
+    <div class="mt-6 border-t border-green-200 pt-5">
+      <h3 class="font-semibold mb-3">Setup (3 steps)</h3>
+      <ol class="space-y-3 text-sm text-slate-600 list-decimal list-inside">
+        <li>Install Obsidian (obsidian.md). Unzip entropy-vault.zip and open the folder as a vault.</li>
+        <li>Install Claude Desktop (claude.ai/download). Place claude_settings.json in ~/Library/Application Support/Claude/ (Mac) or %APPDATA%\Claude\ (Windows).</li>
+        <li>Open Claude Desktop and ask: "What's the state of my portfolio?" — you're live.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="error-section" class="hidden bg-red-50 border border-red-200 rounded-2xl p-6 mb-6">
+    <h2 class="text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
+    <p id="error-message" class="text-sm text-red-700 font-mono"></p>
+    <p class="text-sm text-slate-500 mt-3">Please contact support or try starting over.</p>
+  </div>
+
+  <p class="text-xs text-slate-400 text-center">Bookmark this page — your download link is valid for 7 days.</p>
+
+</div>
+
+<script>
+var JOB_ID = {{ job_id | tojson }};
+var STEP_LABELS = [
+  'Ingesting files',
+  'Building knowledge wiki',
+  'Analyzing gaps',
+  'Importing Notion customer data',
+  'Pulling Gmail history',
+  'Pulling read.ai transcripts',
+  'Assembling vault'
+];
+var pollingInterval;
+var gapsShown = false;
+
+function renderStepsList(stepIndex, status) {
+  var list = document.getElementById('steps-list');
+  while (list.firstChild) { list.removeChild(list.firstChild); }
+  STEP_LABELS.forEach(function(label, i) {
+    var row = document.createElement('div');
+    row.className = 'flex gap-3 text-sm';
+    var icon = document.createElement('span');
+    icon.className = 'w-4 flex-shrink-0';
+    var text = document.createElement('span');
+    if (i < stepIndex || status === 'complete') {
+      icon.textContent = '✓';
+      row.classList.add('text-green-600');
+    } else if (i === stepIndex && status === 'processing') {
+      icon.textContent = '⟳';
+      row.classList.add('text-indigo-600', 'font-medium');
+    } else {
+      icon.textContent = '○';
+      row.classList.add('text-slate-400');
+    }
+    text.textContent = label;
+    row.appendChild(icon);
+    row.appendChild(text);
+    list.appendChild(row);
+  });
+}
+
+function showGaps(gaps) {
+  if (!gaps || gaps.length === 0 || gapsShown) return;
+  gapsShown = true;
+  document.getElementById('gaps-section').classList.remove('hidden');
+  var list = document.getElementById('gaps-list');
+  gaps.forEach(function(gap, i) {
+    var div = document.createElement('div');
+    div.className = 'border border-amber-200 rounded-lg p-3 bg-white';
+
+    var cat = document.createElement('p');
+    cat.className = 'text-sm font-medium text-amber-800 mb-1';
+    cat.textContent = gap.category;  // textContent — no XSS
+
+    var prompt = document.createElement('p');
+    prompt.className = 'text-sm text-slate-600 mb-2';
+    prompt.textContent = gap.prompt;  // textContent — no XSS
+
+    div.appendChild(cat);
+    div.appendChild(prompt);
+
+    if (gap.upload_accepted) {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.className = 'text-sm';
+      var statusSpan = document.createElement('span');
+      statusSpan.className = 'text-xs text-slate-400 block mt-1';
+      statusSpan.id = 'gap-status-' + i;
+      input.addEventListener('change', (function(inp, span) {
+        return function() { uploadGapFile(inp, JOB_ID, span); };
+      })(input, statusSpan));
+      div.appendChild(input);
+      div.appendChild(statusSpan);
+    }
+    list.appendChild(div);
+  });
+}
+
+async function uploadGapFile(inputEl, jobId, statusEl) {
+  var file = inputEl.files[0];
+  if (!file) return;
+  statusEl.textContent = 'Uploading...';
+  try {
+    var resp = await fetch('/api/job/' + jobId + '/gaps/presign', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({session_id: 'gap', filename: file.name, content_type: file.type || 'application/octet-stream'})
+    });
+    var data = await resp.json();
+    await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
+    statusEl.textContent = 'Uploaded';
+  } catch(e) {
+    statusEl.textContent = 'Upload failed';
+  }
+}
+
+async function pollStatus() {
+  try {
+    var resp = await fetch('/api/job/' + JOB_ID + '/status');
+    if (!resp.ok) return;
+    var state = await resp.json();
+
+    var pct = state.total_steps > 0 ? Math.round((state.step_index / state.total_steps) * 100) : 0;
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-pct').textContent = pct + '%';
+
+    var stepLabel = state.status === 'complete' ? 'Complete' :
+                    state.status === 'error' ? 'Error' :
+                    (STEP_LABELS[state.step_index] || 'Processing');
+    document.getElementById('current-step-label').textContent = stepLabel;
+
+    renderStepsList(state.step_index, state.status);
+
+    if (state.gaps && state.gaps.length > 0) { showGaps(state.gaps); }
+
+    if (state.status === 'complete') {
+      clearInterval(pollingInterval);
+      document.getElementById('status-subtitle').textContent = 'Your vault is ready to download.';
+      document.getElementById('download-section').classList.remove('hidden');
+      document.getElementById('download-vault').href = state.vault_download_url;
+      if (state.claude_settings_download_url) {
+        document.getElementById('download-settings').href = state.claude_settings_download_url;
+      }
+      renderStepsList(state.total_steps, 'complete');
+      document.getElementById('progress-bar').style.width = '100%';
+      document.getElementById('progress-pct').textContent = '100%';
+    }
+
+    if (state.status === 'error') {
+      clearInterval(pollingInterval);
+      document.getElementById('error-section').classList.remove('hidden');
+      document.getElementById('error-message').textContent = state.error || 'Unknown error';
+    }
+  } catch(e) { /* network hiccup — retry next tick */ }
+}
+
+pollingInterval = setInterval(pollStatus, 10000);
+pollStatus();
+</script>
+
+</body>
+</html>
