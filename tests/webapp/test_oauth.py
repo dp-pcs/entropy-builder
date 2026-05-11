@@ -1,11 +1,13 @@
 def test_google_oauth_start_redirects(client, mocker):
+    import uuid
+    valid_session_id = str(uuid.uuid4())
     mocker.patch("webapp.oauth.settings.google_client_id", "test-client-id")
     mocker.patch("webapp.oauth.settings.base_url", "http://localhost:8000")
-    resp = client.get("/oauth/google?session_id=sess-1", follow_redirects=False)
+    resp = client.get(f"/oauth/google?session_id={valid_session_id}", follow_redirects=False)
     assert resp.status_code in (302, 307)
     assert "accounts.google.com" in resp.headers["location"]
     assert "test-client-id" in resp.headers["location"]
-    assert "sess-1" in resp.headers["location"]
+    assert valid_session_id in resp.headers["location"]
 
 
 def test_google_oauth_callback_stores_tokens_and_closes(client, mocker):
@@ -34,9 +36,11 @@ def test_google_oauth_callback_stores_tokens_and_closes(client, mocker):
 
 
 def test_notion_oauth_start_redirects(client, mocker):
+    import uuid
+    valid_session_id = str(uuid.uuid4())
     mocker.patch("webapp.oauth.settings.notion_client_id", "notion-cid")
     mocker.patch("webapp.oauth.settings.base_url", "http://localhost:8000")
-    resp = client.get("/oauth/notion?session_id=sess-2", follow_redirects=False)
+    resp = client.get(f"/oauth/notion?session_id={valid_session_id}", follow_redirects=False)
     assert resp.status_code in (302, 307)
     assert "notion.com" in resp.headers["location"]
 

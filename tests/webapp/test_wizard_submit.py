@@ -57,11 +57,29 @@ def test_wizard_submit_missing_name_returns_422(client):
     assert resp.status_code == 422
 
 
+def test_wizard_submit_rejects_foreign_s3_key(client, mocker):
+    mocker.patch("webapp.main.s3.write_job_state")
+    resp = client.post("/api/wizard/submit", json={
+        "session_id": "11111111-1111-1111-1111-111111111111",
+        "s3_keys": ["uploads/22222222-2222-2222-2222-222222222222/evil.pdf"],
+        "user_name": "Test", "user_role": "ic", "account_manager_name": "Test",
+        "team_members": [], "interview_answers": {},
+        "notion_database_id": "abc", "readai_api_key": "rk_test",
+    })
+    assert resp.status_code == 400
+
+
 def test_wizard_submit_requires_google_connection(client, mocker):
     mocker.patch("webapp.main.settings.fireworks_api_key", "fw-key")
     mocker.patch("webapp.main.settings.entropy_template_path", "/tmp")
     # No Google token in session — use a fresh UUID that has no tokens
-    payload = dict(_VALID_PAYLOAD, session_id="22222222-2222-2222-2222-222222222222")
+    # s3_keys must match the new session_id prefix to pass the prefix check
+    new_session_id = "22222222-2222-2222-2222-222222222222"
+    payload = dict(
+        _VALID_PAYLOAD,
+        session_id=new_session_id,
+        s3_keys=[f"uploads/{new_session_id}/notes.pdf"],
+    )
     resp = client.post("/api/wizard/submit", json=payload)
     assert resp.status_code == 400
     assert "Google" in resp.json()["detail"]

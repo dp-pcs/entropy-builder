@@ -6,9 +6,10 @@ def test_health(client):
 
 def test_index_route_exists(client):
     resp = client.get("/")
-    assert resp.status_code in (200, 500)  # 500 until template created
+    assert resp.status_code == 200
+    assert b"Entropy" in resp.content
 
 
 def test_wizard_route_exists(client):
     resp = client.get("/wizard")
-    assert resp.status_code in (200, 500)
+    assert resp.status_code == 200

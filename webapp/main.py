@@ -112,6 +112,10 @@ def create_app() -> FastAPI:
     @app.post("/api/wizard/submit")
     def wizard_submit(req: WizardSubmit):
         from . import jobs
+        expected_prefix = f"uploads/{req.session_id}/"
+        for key in req.s3_keys:
+            if not key.startswith(expected_prefix):
+                raise HTTPException(status_code=400, detail="Invalid s3_key: must be in your upload prefix")
         google_tokens = get_token(req.session_id, "google")
         if not google_tokens:
             raise HTTPException(status_code=400, detail="Google connection required")
@@ -128,7 +132,7 @@ def create_app() -> FastAPI:
                 "access_token": google_tokens.get("access_token", ""),
                 "refresh_token": google_tokens.get("refresh_token", ""),
                 "client_id": google_tokens.get("client_id", settings.google_client_id),
-                "client_secret": google_tokens.get("client_secret", settings.google_client_secret),
+                "client_secret": google_tokens.get("client_secret", ""),
             },
             "readai_api_key": req.readai_api_key,
             "fireworks_api_key": settings.fireworks_api_key,
@@ -163,6 +167,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/job/{job_id}/gaps/presign")
     def gap_presign(job_id: str, req: GapPresignRequest):
+        from . import jobs as _jobs
         if not _UUID_RE.match(job_id):
             raise HTTPException(status_code=400, detail="Invalid job_id")
         state = s3.read_job_state(job_id)
@@ -171,8 +176,7 @@ def create_app() -> FastAPI:
         safe_name = re.sub(r"[^\w.\-]", "_", req.filename.rsplit("/", 1)[-1])
         s3_key = f"jobs/{job_id}/gaps/{safe_name}"
         upload_url = s3.presign_upload(s3_key, req.content_type)
-        gap_keys = list(state.get("gap_s3_keys", [])) + [s3_key]
-        s3.write_job_state(job_id, {**state, "gap_s3_keys": gap_keys})
+        _jobs.update_job_state(job_id, gap_s3_keys=list(state.get("gap_s3_keys", [])) + [s3_key])
         return {"upload_url": upload_url, "s3_key": s3_key}
 
     return app

@@ -11,6 +11,8 @@ from .config import settings as _webapp_settings
 
 _STEPS = ["ingest", "wiki", "gaps", "notion", "gmail", "readai", "assembly"]
 
+_state_lock = threading.Lock()
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -18,10 +20,16 @@ def _now() -> str:
 
 def _update_state(job_id: str, **kwargs) -> None:
     """Update job state in S3. Never include credential fields (tokens, API keys)."""
-    state = s3.read_job_state(job_id) or {}
-    state.update(kwargs)
-    state["updated_at"] = _now()
-    s3.write_job_state(job_id, state)
+    with _state_lock:
+        state = s3.read_job_state(job_id) or {}
+        state.update(kwargs)
+        state["updated_at"] = _now()
+        s3.write_job_state(job_id, state)
+
+
+def update_job_state(job_id: str, **kwargs) -> None:
+    """Public wrapper around _update_state for use outside this module."""
+    _update_state(job_id, **kwargs)
 
 
 def create_job(config_dict: dict, s3_keys: list[str]) -> str:
@@ -100,7 +108,10 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
             claude_settings_key=claude_settings_key,
         )
     except Exception as exc:
-        _update_state(job_id, status="error", error=str(exc))
+        try:
+            _update_state(job_id, status="error", error=str(exc))
+        except Exception:
+            pass  # S3 unreachable — job stays in last known state
 
 
 def _download_s3_files(s3_keys: list[str]) -> list[dict]:

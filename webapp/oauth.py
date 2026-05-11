@@ -50,6 +50,7 @@ _POPUP_FAIL_HTML = """<!DOCTYPE html>
 
 @router.get("/oauth/google")
 def google_start(session_id: str):
+    _validate_state(session_id)
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": f"{settings.base_url}/oauth/google/callback",
@@ -87,6 +88,7 @@ def google_callback(code: str, state: str):
 
 @router.get("/oauth/notion")
 def notion_start(session_id: str):
+    _validate_state(session_id)
     params = {
         "client_id": settings.notion_client_id,
         "redirect_uri": f"{settings.base_url}/oauth/notion/callback",
