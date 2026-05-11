@@ -148,7 +148,7 @@ async function uploadGapFile(inputEl, jobId, statusEl) {
     var resp = await fetch('/api/job/' + jobId + '/gaps/presign', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({session_id: 'gap', filename: file.name, content_type: file.type || 'application/octet-stream'})
+      body: JSON.stringify({filename: file.name, content_type: file.type || 'application/octet-stream'})
     });
     var data = await resp.json();
     await fetch(data.upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
@@ -164,7 +164,7 @@ async function pollStatus() {
     if (!resp.ok) return;
     var state = await resp.json();
 
-    var pct = state.total_steps > 0 ? Math.round((state.step_index / state.total_steps) * 100) : 0;
+    var pct = state.total_steps > 0 ? Math.min(100, Math.round((state.step_index / state.total_steps) * 100)) : 0;
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('progress-pct').textContent = pct + '%';
 
@@ -181,7 +181,7 @@ async function pollStatus() {
       clearInterval(pollingInterval);
       document.getElementById('status-subtitle').textContent = 'Your vault is ready to download.';
       document.getElementById('download-section').classList.remove('hidden');
-      document.getElementById('download-vault').href = state.vault_download_url;
+      if (state.vault_download_url) { document.getElementById('download-vault').href = state.vault_download_url; }
       if (state.claude_settings_download_url) {
         document.getElementById('download-settings').href = state.claude_settings_download_url;
       }

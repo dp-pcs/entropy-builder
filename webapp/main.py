@@ -141,6 +141,8 @@ def create_app() -> FastAPI:
 
     @app.get("/api/job/{job_id}/status")
     def job_status(job_id: str):
+        if not _UUID_RE.match(job_id):
+            raise HTTPException(status_code=400, detail="Invalid job_id")
         state = s3.read_job_state(job_id)
         if state is None:
             raise HTTPException(status_code=404, detail="Job not found")
@@ -156,12 +158,13 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(request, "status.html", {"job_id": job_id})
 
     class GapPresignRequest(BaseModel):
-        session_id: str
         filename: str
         content_type: str
 
     @app.post("/api/job/{job_id}/gaps/presign")
     def gap_presign(job_id: str, req: GapPresignRequest):
+        if not _UUID_RE.match(job_id):
+            raise HTTPException(status_code=400, detail="Invalid job_id")
         state = s3.read_job_state(job_id)
         if state is None:
             raise HTTPException(status_code=404, detail="Job not found")
