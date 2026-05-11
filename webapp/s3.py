@@ -19,6 +19,7 @@ def write_job_state(job_id: str, state: dict) -> None:
         Key=f"jobs/{job_id}/state.json",
         Body=json.dumps(state),
         ContentType="application/json",
+        ServerSideEncryption="AES256",
     )
 
 
@@ -29,7 +30,7 @@ def read_job_state(job_id: str) -> dict | None:
         )
         return json.loads(obj["Body"].read())
     except ClientError as e:
-        if e.response["Error"]["Code"] == "NoSuchKey":
+        if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
             return None
         raise
 
@@ -57,6 +58,7 @@ def upload_vault(job_id: str, zip_bytes: bytes) -> str:
         Key=key,
         Body=zip_bytes,
         ContentType="application/zip",
+        ServerSideEncryption="AES256",
     )
     return key
 
@@ -68,5 +70,6 @@ def upload_claude_settings(job_id: str, settings_json: str) -> str:
         Key=key,
         Body=settings_json.encode(),
         ContentType="application/json",
+        ServerSideEncryption="AES256",
     )
     return key

@@ -20,6 +20,7 @@ def test_write_job_state(mock_s3_client):
         Key="jobs/job-1/state.json",
         Body=json.dumps({"status": "pending"}),
         ContentType="application/json",
+        ServerSideEncryption="AES256",
     )
 
 
@@ -75,4 +76,18 @@ def test_upload_vault(mock_s3_client):
         Key="jobs/job-1/entropy-vault.zip",
         Body=b"zipdata",
         ContentType="application/zip",
+        ServerSideEncryption="AES256",
+    )
+
+
+def test_upload_claude_settings(mock_s3_client):
+    from webapp.s3 import upload_claude_settings
+    key = upload_claude_settings("job-1", '{"mcpServers": {}}')
+    assert key == "jobs/job-1/claude_settings.json"
+    mock_s3_client.put_object.assert_called_once_with(
+        Bucket="test-bucket",
+        Key="jobs/job-1/claude_settings.json",
+        Body=b'{"mcpServers": {}}',
+        ContentType="application/json",
+        ServerSideEncryption="AES256",
     )
