@@ -86,7 +86,6 @@ def test_build_hub_nodes_creates_product_node():
 
 
 def test_pull_customers_filters_by_account_manager(mocker):
-    rows = _load_rows()
     # pull_customers calls notion SDK — mock the query
     mock_notion = MagicMock()
     mock_notion.databases.query.return_value = {

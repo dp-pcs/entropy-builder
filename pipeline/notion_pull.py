@@ -24,9 +24,9 @@ def pull_customers(config: JobConfig) -> list[CustomerRecord]:
             resp = notion.databases.query(**kwargs)
             for page in resp.get("results", []):
                 all_rows.append(_page_to_row(page))
-            if not resp.get("has_more"):
-                break
             cursor = resp.get("next_cursor")
+            if not resp.get("has_more") or not cursor:
+                break
 
     return parse_notion_rows(all_rows)
 
@@ -46,6 +46,10 @@ def _page_to_row(page: dict) -> dict:
             return sel["name"] if sel else ""
         if p.get("type") == "people":
             return ", ".join(u.get("name", "") for u in p.get("people", []))
+        if p.get("type") == "email":
+            return p.get("email") or ""
+        if p.get("type") == "url":
+            return p.get("url") or ""
         return ""
 
     def number(key):
@@ -200,7 +204,7 @@ def build_intelligence_summary(record: CustomerRecord) -> VaultFile:
     content = f"""---
 type: intelligence-summary
 customer: "{record.name}"
-product: {record.product}
+product: "{record.product}"
 arr: {record.arr}
 renewal_date: "{record.renewal_date}"
 status: "{status_str}"
@@ -208,13 +212,13 @@ health_score: 50
 data_confidence: medium
 primary_contact: "{record.primary_contact}"
 segment: drifting
-product_sentiment: {record.product_sentiment}
-support_sentiment: {record.support_sentiment}
-renewals_sentiment: {record.renewals_sentiment}
+product_sentiment: "{record.product_sentiment}"
+support_sentiment: "{record.support_sentiment}"
+renewals_sentiment: "{record.renewals_sentiment}"
 last_updated: {today}
 last_verified: {today}
 notion_synced: "{today}"
-sub_product: {record.sub_product}
+sub_product: "{record.sub_product}"
 contract_term: {record.contract_term}
 eos_customer_success: "{record.eos_extended}"
 primary_contact_email: "{record.primary_email}"
