@@ -35,6 +35,7 @@ def pull_emails(config: JobConfig, domains: dict) -> list[VaultFile]:
             kwargs["pageToken"] = page_token
         resp = service.users().threads().list(**kwargs).execute()
         thread_ids.extend(t["id"] for t in resp.get("threads", []))
+        thread_ids = thread_ids[:500]
         page_token = resp.get("nextPageToken")
         if not page_token or len(thread_ids) >= 500:
             break
@@ -51,7 +52,7 @@ def _process_thread(thread: dict, domains: dict) -> list[VaultFile]:
     messages = thread.get("messages", [])
     if not messages:
         return []
-    headers = {h["name"]: h["value"] for h in messages[0]["payload"]["headers"]}
+    headers = {h["name"]: h["value"] for h in messages[0].get("payload", {}).get("headers", [])}
     sender = headers.get("From", "")
     subject = headers.get("Subject", "(no subject)")
     date_raw = headers.get("Date", "")
@@ -127,7 +128,7 @@ def _extract_body(message: dict) -> str:
         data = message["payload"]["body"].get("data", "")
         if data:
             return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace")
-    except (KeyError, Exception):
+    except (KeyError, ValueError):
         pass
     return ""
 
