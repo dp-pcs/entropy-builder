@@ -100,8 +100,8 @@ def build_email_stub(customer_name: str, product: str, subject: str,
     content = f"""---
 customer: "{customer_name}"
 product: "{product}"
-date: {date_str}
-thread_id: {thread_id}
+date: "{date_str}"
+thread_id: "{thread_id}"
 tier2: {tier2_flag}
 tags: [email, {product.lower()}]
 ---

@@ -22,6 +22,8 @@ def pull_transcripts(config: JobConfig, domains: dict) -> list[VaultFile]:
         resp.raise_for_status()
         data = resp.json()
         meetings.extend(data.get("meetings", []))
+        if len(meetings) > 200:
+            meetings = meetings[:200]
         page_token = data.get("next_page_token")
         if not page_token or len(meetings) >= 200:
             break
@@ -37,7 +39,7 @@ def pull_transcripts(config: JobConfig, domains: dict) -> list[VaultFile]:
             product=customer_info["product"],
             title=meeting.get("title", "Meeting"),
             date_str=date_str,
-            meeting_id=meeting["id"],
+            meeting_id=meeting.get("id", "unknown"),
             summary=meeting.get("summary", ""),
         )
         stubs.append(stub)
@@ -63,8 +65,8 @@ def build_transcript_stub(customer_name: str, product: str, title: str,
     content = f"""---
 customer: "{customer_name}"
 product: "{product}"
-date: {date_str}
-meeting_id: {meeting_id}
+date: "{date_str}"
+meeting_id: "{meeting_id}"
 tags: [transcript, {product.lower()}]
 ---
 
