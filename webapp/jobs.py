@@ -182,7 +182,10 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
         log_activity(job_id, "Pulling Gmail history", kind="phase")
         set_current_activity(job_id, "Gmail inbox", kind="gmail")
         try:
-            email_files = gmail_pull.pull_emails(config, domains)
+            if config.user_role == "external":
+                email_files = gmail_pull.pull_general_emails(config)
+            else:
+                email_files = gmail_pull.pull_emails(config, domains)
             log_activity(job_id, f"Fetched {len(email_files)} email thread(s)", kind="info")
         except Exception as exc:
             email_files = []

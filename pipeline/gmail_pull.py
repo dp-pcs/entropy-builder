@@ -80,6 +80,95 @@ def _process_thread(thread: dict, domains: dict) -> list[VaultFile]:
     return [stub]
 
 
+def pull_general_emails(config: JobConfig) -> list[VaultFile]:
+    """Pull last 90 days of Gmail for non-PM users — broad scan, no domain filtering."""
+    creds = Credentials(
+        token=config.google_credentials["access_token"],
+        refresh_token=config.google_credentials.get("refresh_token"),
+        client_id=config.google_credentials.get("client_id"),
+        client_secret=config.google_credentials.get("client_secret"),
+        token_uri=config.google_credentials.get("token_uri", "https://oauth2.googleapis.com/token"),
+    )
+    service = build("gmail", "v1", credentials=creds)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y/%m/%d")
+    # Exclude bulk/automated mail; focus on real human threads
+    query = (
+        f"after:{cutoff} "
+        "-category:promotions -category:social -category:updates -category:forums "
+        "-from:noreply -from:no-reply -from:donotreply"
+    )
+
+    thread_ids = []
+    page_token = None
+    while True:
+        kwargs = {"userId": "me", "q": query, "maxResults": 100}
+        if page_token:
+            kwargs["pageToken"] = page_token
+        resp = service.users().threads().list(**kwargs).execute()
+        thread_ids.extend(t["id"] for t in resp.get("threads", []))
+        thread_ids = thread_ids[:300]
+        page_token = resp.get("nextPageToken")
+        if not page_token or len(thread_ids) >= 300:
+            break
+
+    stubs = []
+    for tid in thread_ids:
+        thread = service.users().threads().get(userId="me", id=tid, format="metadata",
+                                                metadataHeaders=["Subject", "From", "Date"]).execute()
+        stub = _process_general_thread(thread)
+        if stub:
+            stubs.append(stub)
+    return stubs
+
+
+def _process_general_thread(thread: dict) -> VaultFile | None:
+    messages = thread.get("messages", [])
+    if not messages:
+        return None
+    headers = {h["name"]: h["value"] for h in messages[0].get("payload", {}).get("headers", [])}
+    sender = headers.get("From", "")
+    subject = headers.get("Subject", "(no subject)")
+    date_raw = headers.get("Date", "")
+
+    email_addr = re.search(r"<(.+?)>", sender)
+    email_addr = email_addr.group(1) if email_addr else sender
+
+    # Skip obvious automated senders
+    automated = ["noreply", "no-reply", "donotreply", "notifications@", "alerts@", "mailer-daemon"]
+    if any(x in email_addr.lower() for x in automated):
+        return None
+
+    sender_name_match = re.search(r"^(.+?)\s*<", sender)
+    sender_name = sender_name_match.group(1).strip().strip('"') if sender_name_match else email_addr.split("@")[0]
+
+    date_str = _parse_email_date(date_raw)
+    safe_sender = re.sub(r"[^\w\s-]", "", sender_name).strip().replace(" ", "-")[:40]
+    safe_subject = re.sub(r"[^\w\s-]", "", subject).strip().replace(" ", "-")[:50]
+    path = f"Entropy/Inbox/{safe_sender}/{date_str}_{safe_subject}.md"
+
+    content = f"""---
+sender: "{sender}"
+date: "{date_str}"
+thread_id: "{thread['id']}"
+tags: [email, inbox]
+---
+
+# {subject}
+
+**From:** {sender}
+**Date:** {date_str}
+
+## Summary
+
+_[Auto-ingested — run analysis skill to extract key points]_
+
+## Key Points
+
+_Pending analysis_
+"""
+    return VaultFile(path=path, content=content)
+
+
 def match_domain(email: str, domains: dict) -> dict | None:
     if "@" not in email:
         return None

@@ -73,39 +73,45 @@
       <p class="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/40 mb-5">Build my system</p>
 
       <ol class="space-y-1 flex-1">
-        <li class="rail-li" data-phase="profile" data-state="cur">
+        <li class="rail-li" data-phase="path" data-state="cur">
           <div class="flex items-center gap-3 py-2.5">
             <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">01</span>
+            <span class="rail-label text-sm">Your path</span>
+          </div>
+        </li>
+        <li class="rail-li" data-phase="profile" data-state="idle">
+          <div class="flex items-center gap-3 py-2.5">
+            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">02</span>
             <span class="rail-label text-sm">Profile</span>
           </div>
         </li>
         <li class="rail-li" data-phase="starting" data-state="idle">
           <div class="flex items-center gap-3 py-2.5">
-            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">02</span>
+            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">03</span>
             <span class="rail-label text-sm">Starting point</span>
           </div>
         </li>
         <li class="rail-li" data-phase="thinking" data-state="idle">
           <div class="flex items-center gap-3 py-2.5">
-            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">03</span>
+            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">04</span>
             <span class="rail-label text-sm">How you think</span>
           </div>
         </li>
         <li class="rail-li" data-phase="want" data-state="idle">
           <div class="flex items-center gap-3 py-2.5">
-            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">04</span>
+            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">05</span>
             <span class="rail-label text-sm">What you want</span>
           </div>
         </li>
         <li class="rail-li" data-phase="connect" data-state="idle">
           <div class="flex items-center gap-3 py-2.5">
-            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">05</span>
+            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">06</span>
             <span class="rail-label text-sm">Connect</span>
           </div>
         </li>
         <li class="rail-li" data-phase="finish" data-state="idle">
           <div class="flex items-center gap-3 py-2.5">
-            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">06</span>
+            <span class="rail-dot w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono">07</span>
             <span class="rail-label text-sm">Team &amp; finish</span>
           </div>
         </li>
@@ -120,7 +126,7 @@
     <!-- Form area -->
     <main class="px-6 sm:px-12 lg:px-16 py-12 max-w-3xl">
 
-      <!-- Returning-user banner — shown if they already have a vault -->
+      <!-- Returning-user banner -->
       <div id="existing-vault-banner" class="hidden mb-8 border border-amber/40 bg-amber/8 rounded-xl p-5">
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -146,7 +152,7 @@
 
       <div class="mb-10 flex items-end justify-between gap-6 border-b border-ink/15 pb-5">
         <div>
-          <p id="phase-label" class="font-mono text-[11px] uppercase tracking-[0.22em] text-clay-dark mb-2">Profile</p>
+          <p id="phase-label" class="font-mono text-[11px] uppercase tracking-[0.22em] text-clay-dark mb-2">Your path</p>
           <p id="progress-text" class="font-display text-sm text-ink/65">Question 1 — ~10%</p>
         </div>
         <div class="w-40">
@@ -156,8 +162,30 @@
         </div>
       </div>
 
-      <!-- Step 1: Role -->
+      <!-- Step 1: Persona -->
       <div id="step-1" class="step">
+        <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">What best describes you?</h2>
+        <p class="text-ink/60 mb-7">This determines which data sources and vault structure we build for you.</p>
+        <div class="space-y-2">
+          <label class="flex items-start gap-4 p-5 border border-ink/15 rounded-xl cursor-pointer hover:border-ink/40 has-[:checked]:border-ink has-[:checked]:bg-stone/60 transition">
+            <input type="radio" name="persona" value="pm" class="mt-1 accent-clay">
+            <div>
+              <div class="font-display font-semibold">Portfolio Manager</div>
+              <div class="text-sm text-ink/60 mt-0.5">I manage customer accounts. I want my Notion portfolio, Gmail, and meeting transcripts pulled in and organized by account.</div>
+            </div>
+          </label>
+          <label class="flex items-start gap-4 p-5 border border-ink/15 rounded-xl cursor-pointer hover:border-ink/40 has-[:checked]:border-ink has-[:checked]:bg-stone/60 transition">
+            <input type="radio" name="persona" value="other" class="mt-1 accent-clay">
+            <div>
+              <div class="font-display font-semibold">Other</div>
+              <div class="text-sm text-ink/60 mt-0.5">Executive, ops, individual contributor, or anyone building a personal 2nd brain. We'll scan Gmail for valuable threads and pull meeting notes.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 2: PM role (Portfolio Manager only) -->
+      <div id="step-2" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">What's your role?</h2>
         <p class="text-ink/60 mb-7">Determines your Notion filter, skill set, and vault configuration.</p>
         <div class="space-y-2">
@@ -173,15 +201,11 @@
             <input type="radio" name="role" value="leadership" class="mt-1 accent-clay">
             <div><div class="font-display font-semibold">Leadership</div><div class="text-sm text-ink/60 mt-0.5">Org-wide view across all team members</div></div>
           </label>
-          <label class="flex items-start gap-4 p-5 border border-ink/15 rounded-xl cursor-pointer hover:border-ink/40 has-[:checked]:border-ink has-[:checked]:bg-stone/60 transition">
-            <input type="radio" name="role" value="external" class="mt-1 accent-clay">
-            <div><div class="font-display font-semibold">External / Different org</div><div class="text-sm text-ink/60 mt-0.5">Not part of this Notion workspace</div></div>
-          </label>
         </div>
       </div>
 
-      <!-- Step 2: Name -->
-      <div id="step-2" class="step hidden">
+      <!-- Step 3: Name -->
+      <div id="step-3" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Your name</h2>
         <p class="text-ink/60 mb-7">Used to personalize your vault and filter Notion to your accounts.</p>
         <div class="space-y-5">
@@ -196,8 +220,8 @@
         </div>
       </div>
 
-      <!-- Step 3: Data inventory -->
-      <div id="step-3" class="step hidden">
+      <!-- Step 4: Data inventory -->
+      <div id="step-4" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Do you have existing notes?</h2>
         <p class="text-ink/60 mb-7">If you do, upload them and we'll analyze what's there and fill the gaps.</p>
         <div class="space-y-2 mb-6">
@@ -229,8 +253,8 @@
         </div>
       </div>
 
-      <!-- Step 4: Books -->
-      <div id="step-4" class="step hidden">
+      <!-- Step 5: Books -->
+      <div id="step-5" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Books that shaped how you think</h2>
         <p class="text-ink/60 mb-7">List 3–10 books. These become the foundation of your knowledge wiki.</p>
         <textarea id="books-input" rows="6" placeholder="Never Split the Difference&#10;Atomic Habits&#10;The 48 Laws of Power" class="w-full border border-ink/20 rounded-xl px-4 py-3 focus:outline-none focus:border-clay text-sm bg-white"></textarea>
@@ -243,8 +267,8 @@
         </div>
       </div>
 
-      <!-- Step 5: Frameworks -->
-      <div id="step-5" class="step hidden">
+      <!-- Step 6: Frameworks -->
+      <div id="step-6" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Frameworks and systems</h2>
         <p class="text-ink/60 mb-7">Mental models, sales methodologies, or decision frameworks you apply regularly.</p>
         <textarea id="frameworks-input" rows="6" placeholder="MEDDICC for deal qualification&#10;SPIN Selling for discovery&#10;Ackerman bargaining for negotiation" class="w-full border border-ink/20 rounded-xl px-4 py-3 focus:outline-none focus:border-clay text-sm bg-white"></textarea>
@@ -257,8 +281,8 @@
         </div>
       </div>
 
-      <!-- Step 6: Psych profile -->
-      <div id="step-6" class="step hidden">
+      <!-- Step 7: Psych profile -->
+      <div id="step-7" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Your psychological profile</h2>
         <p class="text-ink/60 mb-7">Calibrates how the system coaches you — pushing toward growth edges, not just validating instincts.</p>
         <div class="space-y-5">
@@ -276,8 +300,8 @@
         </div>
       </div>
 
-      <!-- Step 7: Decision style + goals -->
-      <div id="step-7" class="step hidden">
+      <!-- Step 8: Decision style + goals -->
+      <div id="step-8" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">How you think and what you want</h2>
         <div class="space-y-5 mt-7">
           <div>
@@ -298,10 +322,10 @@
         </div>
       </div>
 
-      <!-- Step 8: Connect Google -->
-      <div id="step-8" class="step hidden">
+      <!-- Step 9: Connect Gmail -->
+      <div id="step-9" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Connect Gmail</h2>
-        <p class="text-ink/60 mb-7">We'll pull your last 90 days of email. Only messages matching your customer domains are stored — nothing else.</p>
+        <p id="gmail-desc" class="text-ink/60 mb-7">We'll pull your last 90 days of email. Only messages matching your customer domains are stored — nothing else.</p>
         <div class="border border-ink/15 rounded-xl p-6 bg-stone/40">
           <button onclick="openOAuth('google')" id="google-connect-btn"
                   class="w-full bg-white border border-ink/20 rounded-xl py-3 px-4 font-display font-semibold hover:border-ink/50 flex items-center justify-center gap-3 transition">
@@ -313,8 +337,8 @@
         <p class="text-xs text-ink/45 mt-4 text-center">A popup will open for Google sign-in. After connecting, the system runs a test query to verify it works.</p>
       </div>
 
-      <!-- Step 9: Team members -->
-      <div id="step-9" class="step hidden">
+      <!-- Step 10: Team members (Portfolio Manager only) -->
+      <div id="step-10" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Your team</h2>
         <p class="text-ink/60 mb-7">Add your direct reports — your vault will cover their portfolios as well.</p>
         <div id="team-member-section">
@@ -334,8 +358,8 @@
         </div>
       </div>
 
-      <!-- Step 10: read.ai + submit -->
-      <div id="step-10" class="step hidden">
+      <!-- Step 11: read.ai + submit -->
+      <div id="step-11" class="step hidden">
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Almost done</h2>
         <p class="text-ink/60 mb-7">One optional connection, then we build your vault.</p>
         <div class="mb-7">
@@ -352,10 +376,11 @@
         </div>
         <div class="bg-ink text-paper rounded-xl p-6 mb-7">
           <p class="font-mono text-[10px] uppercase tracking-[0.22em] text-clay mb-4">What you'll get</p>
-          <div class="space-y-2.5 text-sm text-paper/80">
+          <div id="vault-summary" class="space-y-2.5 text-sm text-paper/80">
             <p class="flex gap-3"><span class="text-clay">✓</span> Personalized 2nd brain wiki (books, frameworks, principles, your profile)</p>
-            <p class="flex gap-3"><span class="text-clay">✓</span> Customer portfolio imported from Notion with pre-populated intelligence summaries</p>
-            <p class="flex gap-3"><span class="text-clay">✓</span> 90 days of Gmail history filed by account</p>
+            <p id="pm-notion-item" class="flex gap-3"><span class="text-clay">✓</span> Customer portfolio imported from Notion with pre-populated intelligence summaries</p>
+            <p id="pm-gmail-item" class="flex gap-3"><span class="text-clay">✓</span> 90 days of Gmail history filed by account</p>
+            <p id="other-gmail-item" class="hidden flex gap-3"><span class="text-clay">✓</span> Gmail scan — important threads and key conversations from the last 90 days</p>
             <p id="readai-item" class="flex gap-3 text-paper/40"><span>○</span> 90 days of meeting transcripts (connect read.ai above to enable)</p>
             <p class="flex gap-3"><span class="text-clay">✓</span> Pre-configured Claude Desktop ready to query all of it</p>
           </div>
@@ -397,16 +422,22 @@ fetch('/api/me').then(r=>r.json()).then(me=>{
 });
 
 const SESSION_ID = crypto.randomUUID();
-const TOTAL_STEPS = 10;
-// Map each step → which rail phase it belongs to
-const STEP_PHASE = {1:'profile',2:'profile',3:'starting',4:'thinking',5:'thinking',6:'thinking',7:'want',8:'connect',9:'finish',10:'finish'};
-const PHASE_LABELS = {profile:'Profile',starting:'Starting point',thinking:'How you think',want:'What you want',connect:'Connect',finish:'Team & finish'};
-const PHASE_ORDER = ['profile','starting','thinking','want','connect','finish'];
+
+// Phase mapping for all 11 steps
+const STEP_PHASE = {1:'path', 2:'profile', 3:'profile', 4:'starting', 5:'thinking', 6:'thinking', 7:'thinking', 8:'want', 9:'connect', 10:'finish', 11:'finish'};
+const PHASE_LABELS = {path:'Your path', profile:'Profile', starting:'Starting point', thinking:'How you think', want:'What you want', connect:'Connect', finish:'Team & finish'};
+const PHASE_ORDER = ['path','profile','starting','thinking','want','connect','finish'];
+
+// Step sequences per persona (set after step 1)
+const PM_STEPS    = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const OTHER_STEPS = [1, 3, 4, 5, 6, 7, 8, 9, 11];
 
 let currentStep = 1;
+let stepSequence = PM_STEPS; // default; updated after persona selection
 let vaultUploaded = false;
 let formData = {
   session_id: SESSION_ID,
+  persona: '',
   user_role: null,
   user_name: '',
   account_manager_name: '',
@@ -414,6 +445,10 @@ let formData = {
   s3_keys: [],
   interview_answers: {}
 };
+
+function getStepIndex() {
+  return stepSequence.indexOf(currentStep);
+}
 
 function updateRail(stepNum) {
   var curPhase = STEP_PHASE[stepNum];
@@ -431,15 +466,17 @@ function updateRail(stepNum) {
 function showStep(n) {
   document.querySelectorAll('.step').forEach(function(el) { el.classList.add('hidden'); });
   document.getElementById('step-' + n).classList.remove('hidden');
-  var pct = Math.round((n / TOTAL_STEPS) * 100);
-  document.getElementById('progress-text').textContent = 'Question ' + n + ' — ~' + pct + '%';
+  var idx = stepSequence.indexOf(n);
+  var total = stepSequence.length;
+  var pct = Math.round(((idx + 1) / total) * 100);
+  document.getElementById('progress-text').textContent = 'Question ' + (idx + 1) + ' — ~' + pct + '%';
   document.getElementById('progress-bar').style.width = pct + '%';
-  document.getElementById('back-btn').classList.toggle('hidden', n === 1);
-  document.getElementById('next-btn').classList.toggle('hidden', n === TOTAL_STEPS);
+  document.getElementById('back-btn').classList.toggle('hidden', idx === 0);
+  document.getElementById('next-btn').classList.toggle('hidden', n === stepSequence[stepSequence.length - 1]);
   updateRail(n);
   window.scrollTo(0, 0);
 
-  if (n === 3) {
+  if (n === 4) {
     document.querySelectorAll('input[name="data-state"]').forEach(function(r) {
       r.addEventListener('change', function() {
         document.getElementById('data-upload-area').classList.toggle('hidden', r.value === 'fresh');
@@ -447,6 +484,15 @@ function showStep(n) {
     });
   }
   if (n === 9) {
+    // Update Gmail description based on persona
+    var desc = document.getElementById('gmail-desc');
+    if (formData.persona === 'other') {
+      desc.textContent = "We'll scan your last 90 days of Gmail for valuable threads — project discussions, key decisions, and important conversations. Newsletters and automated mail are filtered out.";
+    } else {
+      desc.textContent = "We'll pull your last 90 days of email. Only messages matching your customer domains are stored — nothing else.";
+    }
+  }
+  if (n === 10) {
     if (formData.user_role === 'manager' || formData.user_role === 'leadership') {
       document.getElementById('team-member-section').classList.remove('hidden');
       var picker = document.getElementById('team-members-picker');
@@ -457,16 +503,28 @@ function showStep(n) {
       document.getElementById('team-member-section').classList.add('hidden');
     }
   }
+  if (n === 11) {
+    // Show/hide "what you'll get" bullets based on persona
+    var isPM = formData.persona === 'pm';
+    document.getElementById('pm-notion-item').classList.toggle('hidden', !isPM);
+    document.getElementById('pm-gmail-item').classList.toggle('hidden', !isPM);
+    document.getElementById('other-gmail-item').classList.toggle('hidden', isPM);
+    // Show account-manager field only for PM
+    document.getElementById('account-manager-field').classList.toggle('hidden', formData.persona !== 'pm');
+  }
 }
 
 function validateStep(n) {
-  if (n === 1 && !document.querySelector('input[name="role"]:checked')) {
+  if (n === 1 && !document.querySelector('input[name="persona"]:checked')) {
+    alert('Please select your path.'); return false;
+  }
+  if (n === 2 && !document.querySelector('input[name="role"]:checked')) {
     alert('Please select your role.'); return false;
   }
-  if (n === 2 && !document.getElementById('user-name').value.trim()) {
+  if (n === 3 && !document.getElementById('user-name').value.trim()) {
     alert('Please enter your name.'); return false;
   }
-  if (n === 3) {
+  if (n === 4) {
     var state = document.querySelector('input[name="data-state"]:checked');
     if (!state) { alert('Please select one of the options.'); return false; }
     if (state.value !== 'fresh' && !vaultUploaded) {
@@ -478,25 +536,35 @@ function validateStep(n) {
 
 function saveStepData(n) {
   if (n === 1) {
+    var p = document.querySelector('input[name="persona"]:checked');
+    formData.persona = p ? p.value : '';
+    if (formData.persona === 'pm') {
+      stepSequence = PM_STEPS;
+    } else {
+      stepSequence = OTHER_STEPS;
+      formData.user_role = 'external'; // non-PM users skip Notion
+    }
+  }
+  if (n === 2) {
     var r = document.querySelector('input[name="role"]:checked');
     formData.user_role = r ? r.value : null;
   }
-  if (n === 2) {
+  if (n === 3) {
     formData.user_name = document.getElementById('user-name').value.trim();
     formData.account_manager_name = document.getElementById('account-manager-name').value.trim() || formData.user_name;
   }
-  if (n === 3) {
+  if (n === 4) {
     var ds = document.querySelector('input[name="data-state"]:checked');
     formData.interview_answers.data_state = ds ? ds.value : 'fresh';
   }
-  if (n === 4) formData.interview_answers.books = document.getElementById('books-input').value;
-  if (n === 5) formData.interview_answers.frameworks = document.getElementById('frameworks-input').value;
-  if (n === 6) formData.interview_answers.psych_profile = document.getElementById('psych-input').value;
-  if (n === 7) {
+  if (n === 5) formData.interview_answers.books = document.getElementById('books-input').value;
+  if (n === 6) formData.interview_answers.frameworks = document.getElementById('frameworks-input').value;
+  if (n === 7) formData.interview_answers.psych_profile = document.getElementById('psych-input').value;
+  if (n === 8) {
     formData.interview_answers.decision_style = document.getElementById('decision-style').value;
     formData.interview_answers.system_goals = document.getElementById('system-goals').value;
   }
-  if (n === 9) {
+  if (n === 10) {
     var sel = document.getElementById('team-members');
     var fromSelect = Array.from(sel.selectedOptions).map(function(o) { return o.value; });
     var fromText = document.getElementById('team-members-text').value
@@ -508,14 +576,18 @@ function saveStepData(n) {
 function nextStep() {
   if (!validateStep(currentStep)) return;
   saveStepData(currentStep);
-  currentStep++;
-  showStep(currentStep);
+  var idx = stepSequence.indexOf(currentStep);
+  if (idx < stepSequence.length - 1) {
+    currentStep = stepSequence[idx + 1];
+    showStep(currentStep);
+  }
 }
 
 function prevStep() {
-  if (currentStep > 1) {
-    saveStepData(currentStep);
-    currentStep--;
+  saveStepData(currentStep);
+  var idx = stepSequence.indexOf(currentStep);
+  if (idx > 0) {
+    currentStep = stepSequence[idx - 1];
     showStep(currentStep);
   }
 }
@@ -628,7 +700,7 @@ async function loadTeamMembers() {
 }
 
 async function submitWizard() {
-  saveStepData(10);
+  saveStepData(currentStep);
   var btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = 'Submitting...';
