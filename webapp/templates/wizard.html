@@ -120,6 +120,30 @@
     <!-- Form area -->
     <main class="px-6 sm:px-12 lg:px-16 py-12 max-w-3xl">
 
+      <!-- Returning-user banner — shown if they already have a vault -->
+      <div id="existing-vault-banner" class="hidden mb-8 border border-amber/40 bg-amber/8 rounded-xl p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="font-display font-semibold text-ink mb-1">You already have a vault</p>
+            <p class="text-sm text-ink/65">Built <span id="existing-vault-date"></span>. You can go back to it or continue here to rebuild from scratch.</p>
+          </div>
+          <button onclick="document.getElementById('existing-vault-banner').classList.add('hidden')"
+            class="text-ink/35 hover:text-ink/60 transition flex-shrink-0 mt-0.5">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="flex gap-3 mt-4">
+          <a id="existing-vault-link" href="#"
+            class="inline-flex items-center gap-1.5 bg-ink text-paper text-sm font-display font-semibold px-4 py-2 rounded-full hover:bg-ink-2 transition">
+            View my vault
+          </a>
+          <button onclick="document.getElementById('existing-vault-banner').classList.add('hidden')"
+            class="text-sm text-ink/55 hover:text-ink/80 transition px-4 py-2">
+            Rebuild anyway
+          </button>
+        </div>
+      </div>
+
       <div class="mb-10 flex items-end justify-between gap-6 border-b border-ink/15 pb-5">
         <div>
           <p id="phase-label" class="font-mono text-[11px] uppercase tracking-[0.22em] text-clay-dark mb-2">Profile</p>
@@ -348,6 +372,22 @@
   </div>
 
 <script>
+// Check for existing vault and show banner
+fetch('/api/me').then(r=>r.json()).then(me=>{
+  if(me.authenticated && me.latest_job_id){
+    fetch('/api/job/'+me.latest_job_id+'/status').then(r=>r.ok?r.json():null).then(state=>{
+      if(!state||state.status==='error') return;
+      var banner=document.getElementById('existing-vault-banner');
+      document.getElementById('existing-vault-link').href='/job/'+me.latest_job_id;
+      if(me.latest_job_created_at){
+        var d=new Date(me.latest_job_created_at*1000);
+        document.getElementById('existing-vault-date').textContent=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+      }
+      banner.classList.remove('hidden');
+    }).catch(()=>{});
+  }
+});
+
 const SESSION_ID = crypto.randomUUID();
 const TOTAL_STEPS = 10;
 // Map each step → which rail phase it belongs to

@@ -86,6 +86,15 @@ def upload_vault(job_id: str, zip_bytes: bytes) -> str:
     return key
 
 
+def delete_job(job_id: str) -> None:
+    prefix = f"jobs/{job_id}/"
+    paginator = _client().get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=settings.s3_bucket, Prefix=prefix):
+        objects = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
+        if objects:
+            _client().delete_objects(Bucket=settings.s3_bucket, Delete={"Objects": objects})
+
+
 def upload_claude_settings(job_id: str, settings_json: str) -> str:
     key = f"jobs/{job_id}/claude_settings.json"
     _client().put_object(

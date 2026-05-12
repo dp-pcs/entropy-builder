@@ -87,7 +87,41 @@ def create_app() -> FastAPI:
     def me(user=Depends(_current_user)):
         if user is None:
             return JSONResponse({"authenticated": False})
-        return {"authenticated": True, "email": user["email"], "name": user["name"]}
+        latest_job_id = None
+        latest_job_created_at = None
+        try:
+            user_record = db.get_user(user["google_sub"])
+            if user_record:
+                latest_job_id = user_record.get("latest_job_id")
+                jobs_list = user_record.get("jobs", [])
+                match = next((j for j in jobs_list if j.get("job_id") == latest_job_id), None)
+                if match:
+                    latest_job_created_at = int(match.get("created_at", 0))
+        except Exception:
+            pass
+        return {
+            "authenticated": True,
+            "email": user["email"],
+            "name": user["name"],
+            "latest_job_id": latest_job_id,
+            "latest_job_created_at": latest_job_created_at,
+        }
+
+    @app.delete("/api/job/{job_id}")
+    def delete_job(job_id: str, user=Depends(_current_user)):
+        if not _UUID_RE.match(job_id):
+            raise HTTPException(status_code=400, detail="Invalid job_id")
+        state = s3.read_job_state(job_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _check_job_access(state, user, html=False)
+        s3.delete_job(job_id)
+        if user:
+            try:
+                db.remove_job(user["google_sub"], job_id)
+            except Exception:
+                pass
+        return {"ok": True}
 
     @app.post("/api/logout")
     def logout(response: Response, entropy_auth: Optional[str] = Cookie(default=None, alias=_AUTH_COOKIE)):
