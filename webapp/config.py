@@ -17,5 +17,6 @@ class Settings:
     gmail_mcp_package: str = field(default_factory=lambda: os.environ.get("GMAIL_MCP_PACKAGE", "@modelcontextprotocol/server-gmail"))
     readai_mcp_package: str = field(default_factory=lambda: os.environ.get("READAI_MCP_PACKAGE", "@read-ai/mcp-server"))
     dynamodb_table: str = field(default_factory=lambda: os.environ.get("DYNAMODB_TABLE", "entropy-users"))
+    sessions_table: str = field(default_factory=lambda: os.environ.get("SESSIONS_TABLE", "entropy-sessions"))
 
 settings = Settings()

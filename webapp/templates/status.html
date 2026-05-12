@@ -75,12 +75,29 @@
   <header class="border-b border-ink/10 bg-paper/85 backdrop-blur-sm sticky top-0 z-20">
     <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
       <a href="/"><svg class="text-ink h-7" viewBox="0 0 180 36" width="160"><use href="#mark-h"/></svg></a>
-      <div class="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-ink/55">
-        <span class="w-1.5 h-1.5 rounded-full bg-clay pulse-clay"></span>
-        <span id="header-status">Building</span>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-ink/55">
+          <span class="w-1.5 h-1.5 rounded-full bg-clay pulse-clay"></span>
+          <span id="header-status">Building</span>
+        </div>
+        <div id="user-bar" class="hidden items-center gap-3 text-xs font-mono text-ink/55">
+          <span id="user-name"></span>
+          <button onclick="signOut()" class="underline hover:text-ink/80 transition">Sign out</button>
+        </div>
       </div>
     </div>
   </header>
+  <script>
+    fetch('/api/me').then(r=>r.json()).then(u=>{
+      if(u.authenticated){
+        document.getElementById('user-name').textContent = u.name || u.email;
+        document.getElementById('user-bar').classList.replace('hidden','flex');
+      }
+    });
+    function signOut(){
+      fetch('/api/logout',{method:'POST'}).then(()=>location.href='/');
+    }
+  </script>
 
   <div class="max-w-6xl mx-auto px-6 py-12 grid lg:grid-cols-[1.1fr_0.9fr] gap-12">
 

@@ -31,6 +31,10 @@ _(Humans involved. Names, roles, preferences if stated.)_
 _(Anything that doesn't fit above but future-you will thank present-you for.)_
 
 - 2026-04-30: Initial repository bootstrap was pushed to `origin/main` from commit `22cc40f`, then the bead ledger was updated locally to reflect the completed setup steps.
+- 2026-05-12: Google credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) live in `.env` at repo root. The `webapp/oauth.py` file handles all OAuth flows. SYNAPSE_TOKEN also in `.env`.
+- 2026-05-12: `webapp/session.py` uses an in-memory dict `_store` — sessions die on server restart. B0036 tracks migration to DynamoDB-backed store.
+- 2026-05-12: DynamoDB table `entropy-users` (configurable via DYNAMODB_TABLE env var) stores google_sub → email, name, latest_job_id, jobs[]. Used by returning-user flow.
+- 2026-05-12: Production BASE_URL is `https://entropy.elelem.expert`. Set in `.env`. Google Console needs both redirect URIs registered (see B0035).
 
 ---
 

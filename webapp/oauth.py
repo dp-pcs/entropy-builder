@@ -1,10 +1,12 @@
 import re
 import urllib.parse
+import uuid
 import requests
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, RedirectResponse
 from .config import settings
 from .session import set_session_value, get_token
+from .auth import create_auth_token
 from . import db
 
 router = APIRouter()
@@ -15,12 +17,24 @@ _GOOGLE_SCOPES = "openid email https://www.googleapis.com/auth/gmail.readonly"
 
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
+_AUTH_COOKIE = "entropy_auth"
+_AUTH_MAX_AGE = 30 * 86400  # 30 days
+
 
 def _validate_state(state: str) -> None:
-    """Reject non-UUID state parameters to prevent CSRF/DoS."""
     if not _UUID_RE.match(state):
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+
+def _set_auth_cookie(response, token: str):
+    response.set_cookie(
+        _AUTH_COOKIE, token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=_AUTH_MAX_AGE,
+    )
 
 
 _POPUP_HTML = """<!DOCTYPE html>
@@ -77,31 +91,37 @@ def google_callback(code: str, state: str):
     except Exception:
         return HTMLResponse(_POPUP_FAIL_HTML.format(provider="google"))
     set_session_value(state, "google_tokens", tokens)
-    _upsert_google_user(state, tokens.get("access_token", ""))
+    user_info = _upsert_google_user(state, tokens.get("access_token", ""))
     verified = _verify_google(tokens.get("access_token", ""))
-    return HTMLResponse(_POPUP_HTML.format(
-        provider="google",
-        verified="true" if verified else "false",
-    ))
+
+    html = _POPUP_HTML.format(provider="google", verified="true" if verified else "false")
+    response = HTMLResponse(html)
+    if user_info:
+        token = create_auth_token(
+            user_info["google_sub"], user_info.get("email", ""), user_info.get("name", "")
+        )
+        _set_auth_cookie(response, token)
+    return response
 
 
 @router.get("/oauth/google/return")
 def google_return():
     """Full-page OAuth flow for returning users who want to retrieve their vault."""
+    nonce = str(uuid.uuid4())
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": f"{settings.base_url}/oauth/google/return/callback",
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "online",
-        "state": "return",
+        "state": nonce,
     }
     return RedirectResponse(_GOOGLE_AUTH_URL + "?" + urllib.parse.urlencode(params))
 
 
 @router.get("/oauth/google/return/callback")
-def google_return_callback(code: str, state: str):
-    """Exchanges code, looks up DynamoDB, redirects to last job or wizard."""
+def google_return_callback(code: str, state: str = ""):
+    """Exchanges code, looks up DynamoDB, sets auth cookie, redirects to last job or wizard."""
     try:
         resp = requests.post(_GOOGLE_TOKEN_URL, data={
             "code": code,
@@ -128,9 +148,12 @@ def google_return_callback(code: str, state: str):
         latest_job_id = user.get("latest_job_id") if user else None
     except Exception:
         latest_job_id = None
-    if latest_job_id:
-        return RedirectResponse(f"/job/{latest_job_id}")
-    return RedirectResponse("/wizard")
+
+    dest = f"/job/{latest_job_id}" if latest_job_id else "/wizard"
+    response = RedirectResponse(dest)
+    auth_token = create_auth_token(google_sub, ui.get("email", ""), ui.get("name", ""))
+    _set_auth_cookie(response, auth_token)
+    return response
 
 
 @router.get("/api/session/{session_id}/tokens")
@@ -141,8 +164,8 @@ def session_tokens(session_id: str):
     }
 
 
-def _upsert_google_user(session_id: str, access_token: str) -> None:
-    """Fetch Google identity and persist to DynamoDB. Silently swallows errors."""
+def _upsert_google_user(session_id: str, access_token: str) -> dict | None:
+    """Fetch Google identity, persist to DynamoDB, return user info dict. Silently swallows errors."""
     try:
         ui = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -153,8 +176,10 @@ def _upsert_google_user(session_id: str, access_token: str) -> None:
         if google_sub:
             set_session_value(session_id, "google_sub", google_sub)
             db.upsert_user(google_sub, ui.get("email", ""), ui.get("name", ""))
+            return {"google_sub": google_sub, "email": ui.get("email", ""), "name": ui.get("name", "")}
     except Exception:
         pass
+    return None
 
 
 def _verify_google(access_token: str) -> bool:
@@ -168,5 +193,3 @@ def _verify_google(access_token: str) -> bool:
         return resp.status_code == 200
     except Exception:
         return False
-
-

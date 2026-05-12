@@ -3,12 +3,13 @@ import re
 from pathlib import Path
 from typing import Optional
 import requests
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from . import s3, db
+from .auth import get_auth_user, delete_auth_token
 from .config import settings
 from .session import get_token, get_session_value
 
@@ -36,6 +37,30 @@ class WizardSubmit(BaseModel):
 _STATIC_DIR = Path(__file__).parent / "static"
 
 
+_AUTH_COOKIE = "entropy_auth"
+
+
+def _current_user(entropy_auth: Optional[str] = Cookie(default=None, alias=_AUTH_COOKIE)) -> Optional[dict]:
+    if not entropy_auth:
+        return None
+    return get_auth_user(entropy_auth)
+
+
+def _check_job_access(state: dict, user: Optional[dict], html: bool = False, job_id: str = "") -> None:
+    """Raise HTTP error (or redirect for HTML pages) if the user doesn't own this job.
+    Jobs without owner_sub (created before auth was added) are accessible to any authenticated user.
+    """
+    owner = state.get("owner_sub", "")
+    if not owner:
+        return  # pre-auth job — no restriction
+    if user is None:
+        if html:
+            raise HTTPException(status_code=307, headers={"Location": "/oauth/google/return"})
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user["google_sub"] != owner:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Entropy Onboarding")
 
@@ -57,6 +82,19 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         return JSONResponse({"status": "ok"})
+
+    @app.get("/api/me")
+    def me(user=Depends(_current_user)):
+        if user is None:
+            return JSONResponse({"authenticated": False})
+        return {"authenticated": True, "email": user["email"], "name": user["name"]}
+
+    @app.post("/api/logout")
+    def logout(response: Response, entropy_auth: Optional[str] = Cookie(default=None, alias=_AUTH_COOKIE)):
+        if entropy_auth:
+            delete_auth_token(entropy_auth)
+        response.delete_cookie(_AUTH_COOKIE, httponly=True, secure=True, samesite="lax")
+        return {"ok": True}
 
     @app.get("/api/notion/account-managers")
     def notion_account_managers():
@@ -143,8 +181,8 @@ def create_app() -> FastAPI:
             "entropy_template_path": settings.entropy_template_path,
             "product_lines": [],
         }
-        job_id = jobs.create_job(config_dict, req.s3_keys)
-        google_sub = get_session_value(req.session_id, "google_sub")
+        google_sub = get_session_value(req.session_id, "google_sub") or ""
+        job_id = jobs.create_job(config_dict, req.s3_keys, owner_sub=google_sub)
         if google_sub:
             try:
                 db.record_job(google_sub, job_id)
@@ -153,12 +191,13 @@ def create_app() -> FastAPI:
         return {"job_id": job_id}
 
     @app.get("/api/job/{job_id}/status")
-    def job_status(job_id: str):
+    def job_status(job_id: str, user=Depends(_current_user)):
         if not _UUID_RE.match(job_id):
             raise HTTPException(status_code=400, detail="Invalid job_id")
         state = s3.read_job_state(job_id)
         if state is None:
             raise HTTPException(status_code=404, detail="Job not found")
+        _check_job_access(state, user, html=False)
         result = dict(state)
         if state.get("vault_key"):
             result["vault_download_url"] = s3.presign_download(state["vault_key"])
@@ -167,21 +206,28 @@ def create_app() -> FastAPI:
         return result
 
     @app.get("/job/{job_id}")
-    def job_status_page(request: Request, job_id: str):
-        return templates.TemplateResponse(request, "status.html", {"job_id": job_id})
+    def job_status_page(request: Request, job_id: str, user=Depends(_current_user)):
+        if not _UUID_RE.match(job_id):
+            raise HTTPException(status_code=400, detail="Invalid job_id")
+        state = s3.read_job_state(job_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _check_job_access(state, user, html=True, job_id=job_id)
+        return templates.TemplateResponse(request, "status.html", {"job_id": job_id, "user": user})
 
     class GapPresignRequest(BaseModel):
         filename: str
         content_type: str
 
     @app.post("/api/job/{job_id}/gaps/presign")
-    def gap_presign(job_id: str, req: GapPresignRequest):
+    def gap_presign(job_id: str, req: GapPresignRequest, user=Depends(_current_user)):
         from . import jobs as _jobs
         if not _UUID_RE.match(job_id):
             raise HTTPException(status_code=400, detail="Invalid job_id")
         state = s3.read_job_state(job_id)
         if state is None:
             raise HTTPException(status_code=404, detail="Job not found")
+        _check_job_access(state, user, html=False)
         safe_name = re.sub(r"[^\w.\-]", "_", req.filename.rsplit("/", 1)[-1])
         s3_key = f"jobs/{job_id}/gaps/{safe_name}"
         upload_url = s3.presign_upload(s3_key, req.content_type)

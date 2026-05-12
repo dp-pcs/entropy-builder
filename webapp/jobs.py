@@ -65,7 +65,7 @@ def set_current_activity(
     _update_state(job_id, current_activity=activity)
 
 
-def create_job(config_dict: dict, s3_keys: list[str]) -> str:
+def create_job(config_dict: dict, s3_keys: list[str], owner_sub: str = "") -> str:
     job_id = str(uuid.uuid4())
     s3.write_job_config(job_id, config_dict)
     state = {
@@ -79,6 +79,7 @@ def create_job(config_dict: dict, s3_keys: list[str]) -> str:
         "vault_key": None,
         "claude_settings_key": None,
         "error": None,
+        "owner_sub": owner_sub,
         "created_at": _now(),
         "updated_at": _now(),
     }

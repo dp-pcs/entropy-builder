@@ -95,12 +95,29 @@
   <header class="border-b border-ink/10 bg-paper/85 backdrop-blur-sm sticky top-0 z-20">
     <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
       <svg class="text-ink h-7" viewBox="0 0 180 36" width="160"><use href="#mark-h"/></svg>
-      <div class="hidden sm:flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-ink/55">
-        <span class="w-1.5 h-1.5 rounded-full bg-clay"></span>
-        <span>Internal · beta</span>
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-ink/55">
+          <span class="w-1.5 h-1.5 rounded-full bg-clay"></span>
+          <span>Internal · beta</span>
+        </div>
+        <div id="user-bar" class="hidden items-center gap-3 text-xs font-mono text-ink/55">
+          <span id="user-name"></span>
+          <button onclick="signOut()" class="underline hover:text-ink/80 transition">Sign out</button>
+        </div>
       </div>
     </div>
   </header>
+  <script>
+    fetch('/api/me').then(r=>r.json()).then(u=>{
+      if(u.authenticated){
+        document.getElementById('user-name').textContent = u.name || u.email;
+        document.getElementById('user-bar').classList.replace('hidden','flex');
+      }
+    });
+    function signOut(){
+      fetch('/api/logout',{method:'POST'}).then(()=>location.reload());
+    }
+  </script>
 
   <!-- Hero -->
   <section class="relative overflow-hidden">
@@ -130,7 +147,15 @@
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v6m0 0 2.5-2.5M7 7 4.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M2 9.5A5 5 0 1 0 7 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
             Returning? Sign in to retrieve your vault
           </a>
+          <div id="return-error" class="hidden mt-3 text-sm text-clay font-mono">
+            Google sign-in failed — please try again.
+          </div>
         </div>
+        <script>
+          if (new URLSearchParams(location.search).get('return_error')) {
+            document.getElementById('return-error').classList.remove('hidden');
+          }
+        </script>
       </div>
 
       <!-- Animated constellation -->
