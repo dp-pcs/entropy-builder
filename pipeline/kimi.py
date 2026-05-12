@@ -21,7 +21,7 @@ def _strip_fence(raw: str) -> str:
     return text
 
 FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
-MODEL = "accounts/fireworks/models/qwen3p6-plus"
+MODEL = "accounts/fireworks/models/deepseek-v4-pro"
 CHUNK_SIZE = 80_000  # chars — stay under model context limit per call
 MAX_PARALLEL_CHUNKS = 4
 
@@ -73,7 +73,7 @@ def _call_kimi(api_key: str, system: str, user_content: str) -> tuple[str, int]:
     """Returns (generated_text, total_tokens). Tokens fall back to char-based estimate."""
     payload = {
         "model": MODEL,
-        "max_tokens": 32768,
+        "max_tokens": 131072,
         "temperature": 0.6,
         "top_p": 1,
         "top_k": 40,
