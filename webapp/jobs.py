@@ -158,14 +158,24 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
         _update_state(job_id, step="notion", step_index=3)
         log_activity(job_id, "Importing Notion customer data", kind="phase")
         set_current_activity(job_id, "Notion database", kind="notion")
-        customers = notion_pull.pull_customers(config)
-        config.product_lines = list({c.product for c in customers})
-        customer_files = [notion_pull.build_intelligence_summary(c) for c in customers]
-        domains_vf = notion_pull.build_customer_domains(customers)
-        hub_nodes = notion_pull.build_hub_nodes(customers)
-        domains = json.loads(domains_vf.content)
+        try:
+            if config.user_role == "external":
+                raise ValueError("Skipping Notion — external role has no customer portfolio")
+            customers = notion_pull.pull_customers(config)
+            config.product_lines = list({c.product for c in customers})
+            customer_files = [notion_pull.build_intelligence_summary(c) for c in customers]
+            domains_vf = notion_pull.build_customer_domains(customers)
+            hub_nodes = notion_pull.build_hub_nodes(customers)
+            domains = json.loads(domains_vf.content)
+            log_activity(job_id, f"Imported {len(customers)} customer(s)", kind="info")
+        except Exception as exc:
+            customers = []
+            customer_files = []
+            domains_vf = notion_pull.build_customer_domains([])
+            hub_nodes = []
+            domains = json.loads(domains_vf.content)
+            log_activity(job_id, str(exc), kind="info" if config.user_role == "external" else "error")
         set_current_activity(job_id, None)
-        log_activity(job_id, f"Imported {len(customers)} customer(s)", kind="info")
 
         # --- Gmail ---
         _update_state(job_id, step="gmail", step_index=4)
