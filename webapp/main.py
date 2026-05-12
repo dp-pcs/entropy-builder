@@ -29,7 +29,6 @@ class WizardSubmit(BaseModel):
     user_name: str
     account_manager_name: str
     team_members: list[str] = []
-    readai_api_key: str = ""
     s3_keys: list[str] = []
     interview_answers: dict = {}
 
@@ -209,7 +208,7 @@ def create_app() -> FastAPI:
                 "client_id": google_tokens.get("client_id", settings.google_client_id),
                 "client_secret": google_tokens.get("client_secret", ""),
             },
-            "readai_api_key": req.readai_api_key,
+            "readai_access_token": (get_token(req.session_id, "readai") or {}).get("access_token", ""),
             "fireworks_api_key": settings.fireworks_api_key,
             "interview_answers": req.interview_answers,
             "entropy_template_path": settings.entropy_template_path,

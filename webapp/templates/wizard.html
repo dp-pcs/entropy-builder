@@ -339,8 +339,16 @@
         <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Almost done</h2>
         <p class="text-ink/60 mb-7">One optional connection, then we build your vault.</p>
         <div class="mb-7">
-          <label for="readai-key" class="block text-xs font-medium mb-2 font-mono uppercase tracking-[0.12em] text-ink/65">read.ai API key <span class="text-ink/45 normal-case">(optional — enables meeting transcript ingestion)</span></label>
-          <input id="readai-key" type="password" placeholder="app.read.ai → Settings → API" class="w-full border border-ink/20 rounded-xl px-4 py-3 focus:outline-none focus:border-clay text-sm bg-white">
+          <p class="text-xs font-medium mb-3 font-mono uppercase tracking-[0.12em] text-ink/65">read.ai <span class="text-ink/45 normal-case font-body">(optional — pulls your last 90 days of meeting transcripts)</span></p>
+          <div class="border border-ink/15 rounded-xl p-6 bg-stone/40">
+            <button onclick="openOAuth('readai')" id="readai-connect-btn"
+                    class="w-full bg-white border border-ink/20 rounded-xl py-3 px-4 font-display font-semibold hover:border-ink/50 flex items-center justify-center gap-3 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#4F46E5"/><path d="M7 12.5c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12.5" r="2" fill="white"/></svg>
+              Connect read.ai
+            </button>
+            <p id="readai-status" class="mt-4 text-sm text-center text-ink/50 font-mono uppercase tracking-[0.12em] text-xs">Not connected</p>
+          </div>
+          <p class="text-xs text-ink/45 mt-3">A popup will open to sign in with your read.ai account. Claude Desktop will re-use the same sign-in.</p>
         </div>
         <div class="bg-ink text-paper rounded-xl p-6 mb-7">
           <p class="font-mono text-[10px] uppercase tracking-[0.22em] text-clay mb-4">What you'll get</p>
@@ -403,7 +411,6 @@ let formData = {
   user_name: '',
   account_manager_name: '',
   team_members: [],
-  readai_api_key: '',
   s3_keys: [],
   interview_answers: {}
 };
@@ -449,15 +456,6 @@ function showStep(n) {
     } else {
       document.getElementById('team-member-section').classList.add('hidden');
     }
-  }
-  if (n === 10) {
-    document.getElementById('readai-key').addEventListener('input', function() {
-      var hasKey = this.value.trim().length > 0;
-      document.getElementById('readai-item').innerHTML = hasKey
-        ? '<span class="text-clay">✓</span> 90 days of meeting transcripts'
-        : '<span>○</span> 90 days of meeting transcripts (connect read.ai above to enable)';
-      document.getElementById('readai-item').className = 'flex gap-3 ' + (hasKey ? '' : 'text-paper/40');
-    });
   }
 }
 
@@ -505,7 +503,6 @@ function saveStepData(n) {
       .split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
     formData.team_members = fromSelect.length > 0 ? fromSelect : fromText;
   }
-  if (n === 10) formData.readai_api_key = document.getElementById('readai-key').value.trim();
 }
 
 function nextStep() {
@@ -586,6 +583,14 @@ function openOAuth(provider) {
         statusEl.textContent = e.data.verified ? 'Connected and verified' : 'Connected (verification pending)';
         statusEl.className = 'mt-4 text-sm text-center text-sage font-mono uppercase tracking-[0.12em] text-xs';
         document.getElementById(provider + '-connect-btn').disabled = true;
+        if (provider === 'readai') {
+          var item = document.getElementById('readai-item');
+          item.className = 'flex gap-3';
+          var check = document.createElement('span');
+          check.className = 'text-clay';
+          check.textContent = '✓';
+          item.replaceChildren(check, document.createTextNode(' 90 days of meeting transcripts'));
+        }
       } else {
         statusEl.textContent = 'Connection failed — please try again';
         statusEl.className = 'mt-4 text-sm text-center text-red-700 font-mono uppercase tracking-[0.12em] text-xs';

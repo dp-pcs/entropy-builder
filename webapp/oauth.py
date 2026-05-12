@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import os as _os
 import re
 import urllib.parse
 import uuid
@@ -5,7 +8,7 @@ import requests
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, RedirectResponse
 from .config import settings
-from .session import set_session_value, get_token
+from .session import set_session_value, get_session_value, get_token
 from .auth import create_auth_token
 from . import db
 
@@ -14,6 +17,18 @@ router = APIRouter()
 _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GOOGLE_SCOPES = "openid email https://www.googleapis.com/auth/gmail.readonly"
+
+_READAI_AUTH_URL = "https://authn.read.ai/oauth2/auth"
+_READAI_TOKEN_URL = "https://authn.read.ai/oauth2/token"
+_READAI_SCOPES = "openid email offline_access meeting:read"
+
+
+def _pkce_pair() -> tuple[str, str]:
+    verifier = base64.urlsafe_b64encode(_os.urandom(48)).rstrip(b"=").decode()
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()
+    ).rstrip(b"=").decode()
+    return verifier, challenge
 
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
 
@@ -156,11 +171,65 @@ def google_return_callback(code: str, state: str = ""):
     return response
 
 
+@router.get("/oauth/readai")
+def readai_start(session_id: str):
+    _validate_state(session_id)
+    verifier, challenge = _pkce_pair()
+    set_session_value(session_id, "readai_code_verifier", verifier)
+    params = {
+        "client_id": settings.readai_client_id,
+        "redirect_uri": f"{settings.base_url}/oauth/readai/callback",
+        "response_type": "code",
+        "scope": _READAI_SCOPES,
+        "state": session_id,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    }
+    return RedirectResponse(_READAI_AUTH_URL + "?" + urllib.parse.urlencode(params))
+
+
+@router.get("/oauth/readai/callback")
+def readai_callback(code: str, state: str):
+    _validate_state(state)
+    verifier = get_session_value(state, "readai_code_verifier")
+    if not verifier:
+        return HTMLResponse(_POPUP_FAIL_HTML.format(provider="readai"))
+    try:
+        resp = requests.post(_READAI_TOKEN_URL, data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": f"{settings.base_url}/oauth/readai/callback",
+            "client_id": settings.readai_client_id,
+            "code_verifier": verifier,
+        }, timeout=15)
+        resp.raise_for_status()
+        tokens = resp.json()
+    except Exception:
+        return HTMLResponse(_POPUP_FAIL_HTML.format(provider="readai"))
+    set_session_value(state, "readai_tokens", tokens)
+    verified = _verify_readai(tokens.get("access_token", ""))
+    return HTMLResponse(_POPUP_HTML.format(provider="readai", verified="true" if verified else "false"))
+
+
+def _verify_readai(access_token: str) -> bool:
+    try:
+        resp = requests.get(
+            "https://api.read.ai/v1/meetings",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"limit": 1},
+            timeout=10,
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 @router.get("/api/session/{session_id}/tokens")
 def session_tokens(session_id: str):
     return {
         "google": get_token(session_id, "google") is not None,
         "notion": get_token(session_id, "notion") is not None,
+        "readai": get_token(session_id, "readai") is not None,
     }
 
 

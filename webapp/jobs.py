@@ -255,11 +255,7 @@ def generate_claude_settings(config: JobConfig) -> str:
                 }
             },
             "readai": {
-                "command": "npx",
-                "args": ["-y", _webapp_settings.readai_mcp_package],
-                "env": {
-                    "READAI_API_KEY": config.readai_api_key,
-                }
+                "url": "https://api.read.ai/mcp",
             },
         }
     }, indent=2)

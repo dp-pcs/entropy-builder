@@ -10,7 +10,7 @@ READAI_BASE = "https://api.read.ai/v1"
 def pull_transcripts(config: JobConfig, domains: dict) -> list[VaultFile]:
     """Pull last 90 days of read.ai meetings and match to customers."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
-    headers = {"Authorization": f"Bearer {config.readai_api_key}"}
+    headers = {"Authorization": f"Bearer {config.readai_access_token}"}
 
     meetings = []
     page_token = None
