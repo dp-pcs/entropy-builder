@@ -150,34 +150,25 @@ def generate_wiki(
 ) -> list[VaultFile]:
     """Pass 1: generate wiki from interview answers + ingested content.
 
-    on_chunk(chunk_index, total_chunks, tokens) called after each Kimi call.
+    Always splits files across MAX_PARALLEL_CHUNKS concurrent calls regardless
+    of total content size. on_chunk(chunk_index, total_chunks, tokens) is called
+    after each call completes.
     """
-    user_content = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
-    for f in ingested_files:
-        user_content += f"FILE: {f.path}\n{f.content[:3000]}\n\n"
-
-    if len(user_content) <= CHUNK_SIZE:
-        raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, user_content)
-        if on_chunk:
-            on_chunk(1, 1, tokens)
-        return _parse_wiki_response(raw)
-
-    return _generate_wiki_chunked(config, ingested_files, on_chunk)
-
-
-def _generate_wiki_chunked(
-    config: JobConfig,
-    ingested_files: list[VaultFile],
-    on_chunk=None,
-) -> list[VaultFile]:
     interview_block = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
-    chunks = [interview_block]
-    for f in ingested_files:
-        addition = f"FILE: {f.path}\n{f.content[:3000]}\n\n"
-        if len(chunks[-1]) + len(addition) > CHUNK_SIZE:
-            chunks.append(addition)
-        else:
-            chunks[-1] += addition
+
+    num_chunks = min(max(len(ingested_files), 1), MAX_PARALLEL_CHUNKS)
+
+    # Distribute files round-robin across chunks so each gets a balanced mix
+    groups: list[list[VaultFile]] = [[] for _ in range(num_chunks)]
+    for i, f in enumerate(ingested_files):
+        groups[i % num_chunks].append(f)
+
+    chunks = []
+    for group in groups:
+        content = interview_block
+        for f in group:
+            content += f"FILE: {f.path}\n{f.content[:2000]}\n\n"
+        chunks.append(content)
 
     merged: dict[str, str] = {}
     lock = threading.Lock()
@@ -187,7 +178,7 @@ def _generate_wiki_chunked(
         raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, chunk)
         return i, raw, tokens
 
-    with ThreadPoolExecutor(max_workers=min(len(chunks), MAX_PARALLEL_CHUNKS)) as pool:
+    with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
         futures = {pool.submit(_process, i, chunk): i for i, chunk in enumerate(chunks)}
         for future in as_completed(futures):
             i, raw, tokens = future.result()
