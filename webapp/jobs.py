@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import boto3
 
-from pipeline import ingest, kimi, notion_pull, gmail_pull, readai_pull, vault_builder
+from pipeline import ingest, kimi, notion_pull, gmail_pull, drive_pull, readai_pull, vault_builder
 from pipeline.models import JobConfig
 from . import s3
 from .config import settings as _webapp_settings
@@ -192,6 +192,17 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
             log_activity(job_id, f"Gmail skipped: {exc}", kind="error")
         set_current_activity(job_id, None)
 
+        # --- Google Drive (non-PM only) ---
+        drive_files: list = []
+        if config.user_role == "external":
+            set_current_activity(job_id, "Google Drive", kind="file")
+            try:
+                drive_files = drive_pull.pull_drive_docs(config)
+                log_activity(job_id, f"Fetched {len(drive_files)} Drive document(s)", kind="info")
+            except Exception as exc:
+                log_activity(job_id, f"Google Drive skipped: {exc}", kind="error")
+            set_current_activity(job_id, None)
+
         # --- read.ai ---
         _update_state(job_id, step="readai", step_index=5)
         log_activity(job_id, "Pulling read.ai transcripts", kind="phase")
@@ -208,7 +219,7 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
         _update_state(job_id, step="assembly", step_index=6)
         log_activity(job_id, "Assembling vault", kind="phase")
         set_current_activity(job_id, "building zip", kind="synthesize")
-        all_customer_files = customer_files + [domains_vf] + email_files + transcript_files
+        all_customer_files = customer_files + [domains_vf] + email_files + drive_files + transcript_files
         zip_bytes = vault_builder.build_vault(
             config, wiki_files, customers, all_customer_files, hub_nodes, gap_items
         )

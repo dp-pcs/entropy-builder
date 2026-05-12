@@ -16,7 +16,8 @@ router = APIRouter()
 
 _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-_GOOGLE_SCOPES = "openid email https://www.googleapis.com/auth/gmail.readonly"
+_GOOGLE_SCOPES_PM    = "openid email https://www.googleapis.com/auth/gmail.readonly"
+_GOOGLE_SCOPES_OTHER = "openid email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly"
 
 _READAI_AUTH_URL = "https://authn.read.ai/oauth2/auth"
 _READAI_TOKEN_URL = "https://authn.read.ai/oauth2/token"
@@ -76,13 +77,14 @@ _POPUP_FAIL_HTML = """<!DOCTYPE html>
 
 
 @router.get("/oauth/google")
-def google_start(session_id: str):
+def google_start(session_id: str, persona: str = "pm"):
     _validate_state(session_id)
+    scopes = _GOOGLE_SCOPES_OTHER if persona != "pm" else _GOOGLE_SCOPES_PM
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": f"{settings.base_url}/oauth/google/callback",
         "response_type": "code",
-        "scope": _GOOGLE_SCOPES,
+        "scope": scopes,
         "access_type": "offline",
         "prompt": "consent",
         "state": session_id,

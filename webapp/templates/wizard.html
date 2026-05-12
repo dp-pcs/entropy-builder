@@ -324,10 +324,10 @@
 
       <!-- Step 9: Connect Gmail -->
       <div id="step-9" class="step hidden">
-        <h2 class="font-display text-3xl font-bold mb-2 tracking-tight">Connect Gmail</h2>
+        <h2 id="gmail-heading" class="font-display text-3xl font-bold mb-2 tracking-tight">Connect Gmail</h2>
         <p id="gmail-desc" class="text-ink/60 mb-7">We'll pull your last 90 days of email. Only messages matching your customer domains are stored — nothing else.</p>
         <div class="border border-ink/15 rounded-xl p-6 bg-stone/40">
-          <button onclick="openOAuth('google')" id="google-connect-btn"
+          <button onclick="openOAuth('google', {persona: formData.persona})" id="google-connect-btn"
                   class="w-full bg-white border border-ink/20 rounded-xl py-3 px-4 font-display font-semibold hover:border-ink/50 flex items-center justify-center gap-3 transition">
             <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.32z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Connect Google
@@ -381,6 +381,7 @@
             <p id="pm-notion-item" class="flex gap-3"><span class="text-clay">✓</span> Customer portfolio imported from Notion with pre-populated intelligence summaries</p>
             <p id="pm-gmail-item" class="flex gap-3"><span class="text-clay">✓</span> 90 days of Gmail history filed by account</p>
             <p id="other-gmail-item" class="hidden flex gap-3"><span class="text-clay">✓</span> Gmail scan — important threads and key conversations from the last 90 days</p>
+            <p id="other-drive-item" class="hidden flex gap-3"><span class="text-clay">✓</span> Google Drive — recent Docs and Gemini meeting notes pulled in</p>
             <p id="readai-item" class="flex gap-3 text-paper/40"><span>○</span> 90 days of meeting transcripts (connect read.ai above to enable)</p>
             <p class="flex gap-3"><span class="text-clay">✓</span> Pre-configured Claude Desktop ready to query all of it</p>
           </div>
@@ -484,12 +485,12 @@ function showStep(n) {
     });
   }
   if (n === 9) {
-    // Update Gmail description based on persona
-    var desc = document.getElementById('gmail-desc');
     if (formData.persona === 'other') {
-      desc.textContent = "We'll scan your last 90 days of Gmail for valuable threads — project discussions, key decisions, and important conversations. Newsletters and automated mail are filtered out.";
+      document.getElementById('gmail-heading').textContent = 'Connect Google';
+      document.getElementById('gmail-desc').textContent = "We’ll scan your last 90 days of Gmail for valuable threads and pull recent Google Docs (including Gemini meeting notes). Newsletters and automated mail are filtered out.";
     } else {
-      desc.textContent = "We'll pull your last 90 days of email. Only messages matching your customer domains are stored — nothing else.";
+      document.getElementById('gmail-heading').textContent = 'Connect Gmail';
+      document.getElementById('gmail-desc').textContent = "We’ll pull your last 90 days of email. Only messages matching your customer domains are stored — nothing else.";
     }
   }
   if (n === 10) {
@@ -509,6 +510,7 @@ function showStep(n) {
     document.getElementById('pm-notion-item').classList.toggle('hidden', !isPM);
     document.getElementById('pm-gmail-item').classList.toggle('hidden', !isPM);
     document.getElementById('other-gmail-item').classList.toggle('hidden', isPM);
+    document.getElementById('other-drive-item').classList.toggle('hidden', isPM);
     // Show account-manager field only for PM
     document.getElementById('account-manager-field').classList.toggle('hidden', formData.persona !== 'pm');
   }
@@ -640,12 +642,18 @@ async function uploadFile(inputEl, purpose) {
 
 var _oauthHandlers = {};
 
-function openOAuth(provider) {
+function openOAuth(provider, extraParams) {
   if (_oauthHandlers[provider]) {
     window.removeEventListener('message', _oauthHandlers[provider]);
     delete _oauthHandlers[provider];
   }
-  var popup = window.open('/oauth/' + provider + '?session_id=' + SESSION_ID, 'oauth', 'width=600,height=700,left=200,top=100');
+  var url = '/oauth/' + provider + '?session_id=' + SESSION_ID;
+  if (extraParams) {
+    Object.keys(extraParams).forEach(function(k) {
+      url += '&' + k + '=' + encodeURIComponent(extraParams[k]);
+    });
+  }
+  var popup = window.open(url, 'oauth', 'width=600,height=700,left=200,top=100');
   function handler(e) {
     if (e.data && e.data.provider === provider && e.origin === window.location.origin) {
       window.removeEventListener('message', handler);
