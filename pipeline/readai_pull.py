@@ -5,12 +5,30 @@ from datetime import datetime, timedelta, timezone
 from .models import JobConfig, VaultFile
 
 READAI_BASE = "https://api.read.ai/v1"
+_READAI_TOKEN_URL = "https://authn.read.ai/oauth2/token"
+
+
+def _refresh_access_token(config: JobConfig) -> str:
+    """Return a fresh access token using the refresh token. Falls back to the stored token on failure."""
+    if not config.readai_refresh_token or not config.readai_client_id:
+        return config.readai_access_token
+    try:
+        resp = requests.post(_READAI_TOKEN_URL, data={
+            "grant_type": "refresh_token",
+            "refresh_token": config.readai_refresh_token,
+            "client_id": config.readai_client_id,
+        }, timeout=15)
+        resp.raise_for_status()
+        return resp.json().get("access_token", config.readai_access_token)
+    except Exception:
+        return config.readai_access_token
 
 
 def pull_transcripts(config: JobConfig, domains: dict) -> list[VaultFile]:
     """Pull last 90 days of read.ai meetings and match to customers."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
-    headers = {"Authorization": f"Bearer {config.readai_access_token}"}
+    access_token = _refresh_access_token(config)
+    headers = {"Authorization": f"Bearer {access_token}"}
 
     meetings = []
     page_token = None

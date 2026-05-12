@@ -209,6 +209,8 @@ def create_app() -> FastAPI:
                 "client_secret": google_tokens.get("client_secret", ""),
             },
             "readai_access_token": (get_token(req.session_id, "readai") or {}).get("access_token", ""),
+            "readai_refresh_token": (get_token(req.session_id, "readai") or {}).get("refresh_token", ""),
+            "readai_client_id": settings.readai_client_id,
             "fireworks_api_key": settings.fireworks_api_key,
             "interview_answers": req.interview_answers,
             "entropy_template_path": settings.entropy_template_path,
