@@ -225,7 +225,7 @@ def _generate_env(config: JobConfig) -> str:
     return f"""# Entropy environment — KEEP PRIVATE, do not commit to git or share
 NOTION_TOKEN={config.notion_token}
 NOTION_DATABASE_ID={config.notion_database_id}
-READAI_API_KEY={config.readai_api_key}
+READAI_API_KEY={config.readai_access_token}
 GOOGLE_ACCESS_TOKEN={google.get('access_token', '')}
 GOOGLE_REFRESH_TOKEN={google.get('refresh_token', '')}
 GOOGLE_CLIENT_ID={google.get('client_id', '')}

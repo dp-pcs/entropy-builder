@@ -54,7 +54,7 @@ def test_pull_transcripts_calls_api(mocker):
     cfg = JobConfig(
         user_name="T", user_role="ic", account_manager_name="T", team_members=[],
         notion_token="", notion_database_id="", google_credentials={},
-        readai_api_key="key123", fireworks_api_key="", interview_answers={},
+        readai_access_token="key123", fireworks_api_key="", interview_answers={},
         entropy_template_path="/tmp",
     )
     stubs = pull_transcripts(cfg, DOMAINS)

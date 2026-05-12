@@ -14,7 +14,7 @@ def _make_config() -> dict:
         "notion_database_id": "db-id",
         "google_credentials": {"access_token": "g-acc", "refresh_token": "g-ref",
                                 "client_id": "g-cid", "client_secret": "g-csec"},
-        "readai_api_key": "ra-key",
+        "readai_access_token": "ra-key",
         "fireworks_api_key": "fw-key",
         "interview_answers": {"books": "Atomic Habits"},
         "entropy_template_path": "/tmp",
@@ -116,7 +116,7 @@ def test_run_pipeline_job_notion_failure(mocker):
         "team_members": [], "notion_token": "n-tok", "notion_database_id": "db-id",
         "google_credentials": {"access_token": "g-acc", "refresh_token": "g-ref",
                                 "client_id": "g-cid", "client_secret": "g-csec"},
-        "readai_api_key": "ra-key", "fireworks_api_key": "fw-key",
+        "readai_access_token": "ra-key", "fireworks_api_key": "fw-key",
         "interview_answers": {}, "entropy_template_path": "/tmp", "product_lines": [],
     }
     import pytest
@@ -135,7 +135,7 @@ def test_generate_claude_settings():
         team_members=[], notion_token="n-tok", notion_database_id="db-id",
         google_credentials={"access_token": "g-acc", "refresh_token": "g-ref",
                              "client_id": "g-cid", "client_secret": "g-csec"},
-        readai_api_key="ra-key", fireworks_api_key="fw-key",
+        readai_access_token="ra-key", fireworks_api_key="fw-key",
         interview_answers={}, entropy_template_path="/tmp",
     )
     result = json.loads(generate_claude_settings(config))

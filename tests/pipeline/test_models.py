@@ -11,7 +11,7 @@ def test_job_config_fields():
         notion_token="tok",
         notion_database_id="db123",
         google_credentials={"access_token": "goog"},
-        readai_api_key="readai",
+        readai_access_token="readai",
         fireworks_api_key="fw",
         interview_answers={"role": "AE"},
         entropy_template_path="/tmp/entropy",

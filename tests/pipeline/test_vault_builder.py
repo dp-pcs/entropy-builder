@@ -18,7 +18,7 @@ def _make_config(tmp_path):
     return JobConfig(
         user_name="Jane Smith", user_role="ic", account_manager_name="Jane Smith",
         team_members=[], notion_token="", notion_database_id="",
-        google_credentials={}, readai_api_key="", fireworks_api_key="",
+        google_credentials={}, readai_access_token="", fireworks_api_key="",
         interview_answers={"role": "AE"}, entropy_template_path=str(tmp_path),
         product_lines=["Influitive"],
     )

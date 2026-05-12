@@ -9,7 +9,7 @@ def _make_config(fireworks_api_key="fw-test"):
     return JobConfig(
         user_name="Test", user_role="ic", account_manager_name="Test",
         team_members=[], notion_token="", notion_database_id="",
-        google_credentials={}, readai_api_key="", fireworks_api_key=fireworks_api_key,
+        google_credentials={}, readai_access_token="", fireworks_api_key=fireworks_api_key,
         interview_answers={"role": "AE", "books": ["Atomic Habits"]},
         entropy_template_path="/tmp",
     )

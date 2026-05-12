@@ -11,7 +11,7 @@ config.json format:
   "notion_token": "ntn_...",
   "notion_database_id": "28485e927d3181c89d6cdd6fd57ea07d",
   "google_credentials": {},
-  "readai_api_key": "...",
+  "readai_access_token": "...",
   "fireworks_api_key": "...",
   "interview_answers": {"role": "Account Manager", "books": ["Atomic Habits"]},
   "entropy_template_path": "/Users/davidproctor/Documents/GitHub/entropy"

@@ -19,7 +19,7 @@ def _make_config():
     return JobConfig(
         user_name="Test User", user_role="ic", account_manager_name="Test User",
         team_members=[], notion_token="tok", notion_database_id="db123",
-        google_credentials={}, readai_api_key="", fireworks_api_key="",
+        google_credentials={}, readai_access_token="", fireworks_api_key="",
         interview_answers={}, entropy_template_path="/tmp",
     )
 

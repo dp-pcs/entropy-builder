@@ -7,7 +7,7 @@ _VALID_PAYLOAD = {
     "user_name": "Alice Johnson",
     "account_manager_name": "Alice Johnson",
     "team_members": [],
-    "readai_api_key": "ra-key",
+    "readai_access_token": "ra-key",
     "s3_keys": ["uploads/11111111-1111-1111-1111-111111111111/notes.pdf"],
     "interview_answers": {"books": "Never Split the Difference", "frameworks": "MEDDICC"},
 }
@@ -66,7 +66,7 @@ def test_wizard_submit_rejects_foreign_s3_key(client, mocker):
         "s3_keys": ["uploads/22222222-2222-2222-2222-222222222222/evil.pdf"],
         "user_name": "Test", "user_role": "ic", "account_manager_name": "Test",
         "team_members": [], "interview_answers": {},
-        "notion_database_id": "abc", "readai_api_key": "rk_test",
+        "notion_database_id": "abc", "readai_access_token": "rk_test",
     })
     assert resp.status_code == 400
 

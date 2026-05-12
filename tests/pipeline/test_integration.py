@@ -23,7 +23,7 @@ def _make_config(tmp_path):
     return JobConfig(
         user_name="Jane Smith", user_role="ic", account_manager_name="Jane Smith",
         team_members=[], notion_token="tok", notion_database_id="db123",
-        google_credentials={}, readai_api_key="ra", fireworks_api_key="fw",
+        google_credentials={}, readai_access_token="ra", fireworks_api_key="fw",
         interview_answers={"role": "AE", "books": ["Never Split the Difference"]},
         entropy_template_path=str(tmp_path), product_lines=["Influitive"],
     )
