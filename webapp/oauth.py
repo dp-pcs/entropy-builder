@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, RedirectResponse
 from .config import settings
 from .session import set_session_value, get_token
+from . import db
 
 router = APIRouter()
 
@@ -76,11 +77,60 @@ def google_callback(code: str, state: str):
     except Exception:
         return HTMLResponse(_POPUP_FAIL_HTML.format(provider="google"))
     set_session_value(state, "google_tokens", tokens)
+    _upsert_google_user(state, tokens.get("access_token", ""))
     verified = _verify_google(tokens.get("access_token", ""))
     return HTMLResponse(_POPUP_HTML.format(
         provider="google",
         verified="true" if verified else "false",
     ))
+
+
+@router.get("/oauth/google/return")
+def google_return():
+    """Full-page OAuth flow for returning users who want to retrieve their vault."""
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": f"{settings.base_url}/oauth/google/return/callback",
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "online",
+        "state": "return",
+    }
+    return RedirectResponse(_GOOGLE_AUTH_URL + "?" + urllib.parse.urlencode(params))
+
+
+@router.get("/oauth/google/return/callback")
+def google_return_callback(code: str, state: str):
+    """Exchanges code, looks up DynamoDB, redirects to last job or wizard."""
+    try:
+        resp = requests.post(_GOOGLE_TOKEN_URL, data={
+            "code": code,
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": f"{settings.base_url}/oauth/google/return/callback",
+            "grant_type": "authorization_code",
+        }, timeout=15)
+        resp.raise_for_status()
+        tokens = resp.json()
+        ui = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+            timeout=10,
+        ).json()
+        google_sub = ui.get("sub", "")
+    except Exception:
+        return RedirectResponse("/?return_error=1")
+    if not google_sub:
+        return RedirectResponse("/?return_error=1")
+    try:
+        db.upsert_user(google_sub, ui.get("email", ""), ui.get("name", ""))
+        user = db.get_user(google_sub)
+        latest_job_id = user.get("latest_job_id") if user else None
+    except Exception:
+        latest_job_id = None
+    if latest_job_id:
+        return RedirectResponse(f"/job/{latest_job_id}")
+    return RedirectResponse("/wizard")
 
 
 @router.get("/api/session/{session_id}/tokens")
@@ -89,6 +139,22 @@ def session_tokens(session_id: str):
         "google": get_token(session_id, "google") is not None,
         "notion": get_token(session_id, "notion") is not None,
     }
+
+
+def _upsert_google_user(session_id: str, access_token: str) -> None:
+    """Fetch Google identity and persist to DynamoDB. Silently swallows errors."""
+    try:
+        ui = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        ).json()
+        google_sub = ui.get("sub", "")
+        if google_sub:
+            set_session_value(session_id, "google_sub", google_sub)
+            db.upsert_user(google_sub, ui.get("email", ""), ui.get("name", ""))
+    except Exception:
+        pass
 
 
 def _verify_google(access_token: str) -> bool:

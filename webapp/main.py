@@ -8,9 +8,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from . import s3
+from . import s3, db
 from .config import settings
-from .session import get_token
+from .session import get_token, get_session_value
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
@@ -144,6 +144,12 @@ def create_app() -> FastAPI:
             "product_lines": [],
         }
         job_id = jobs.create_job(config_dict, req.s3_keys)
+        google_sub = get_session_value(req.session_id, "google_sub")
+        if google_sub:
+            try:
+                db.record_job(google_sub, job_id)
+            except Exception:
+                pass  # don't fail the job if DynamoDB is unavailable
         return {"job_id": job_id}
 
     @app.get("/api/job/{job_id}/status")
