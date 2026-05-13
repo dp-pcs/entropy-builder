@@ -8,6 +8,21 @@ from .models import JobConfig, CustomerRecord, VaultFile
 _NOTION_API = "https://api.notion.com/v1"
 
 
+def _discover_database_id(token: str) -> str:
+    """Return the ID of the first database visible to this integration token."""
+    resp = requests.post(
+        f"{_NOTION_API}/search",
+        headers={"Authorization": f"Bearer {token}", "Notion-Version": "2022-06-28"},
+        json={"filter": {"value": "database", "property": "object"}, "page_size": 1},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    results = resp.json().get("results", [])
+    if not results:
+        raise ValueError("Notion token has no accessible databases")
+    return results[0]["id"].replace("-", "")
+
+
 def _query_page(token: str, database_id: str, cursor: str | None = None) -> dict:
     """POST /databases/{id}/query directly — fetch one page of results."""
     body: dict = {"page_size": 100}
@@ -34,10 +49,12 @@ def pull_customers(config: JobConfig) -> list[CustomerRecord]:
         else ([config.account_manager_name] if config.account_manager_name else [])
     )
 
+    database_id = _discover_database_id(config.notion_token)
+
     all_rows = []
     cursor = None
     while True:
-        resp = _query_page(config.notion_token, config.notion_database_id, cursor)
+        resp = _query_page(config.notion_token, database_id, cursor)
         for page in resp.get("results", []):
             all_rows.append(_page_to_row(page))
         cursor = resp.get("next_cursor")
