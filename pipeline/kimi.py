@@ -111,7 +111,7 @@ def _call_kimi(
             # stream=True + per-chunk read timeout: timeout resets on every token,
             # so a 20-minute generation never hits the wall-clock limit.
             resp = requests.post(
-                FIREWORKS_URL, headers=headers, json=payload,
+                url, headers=headers, json=payload,
                 timeout=(10, 120), stream=True,
             )
             resp.raise_for_status()
