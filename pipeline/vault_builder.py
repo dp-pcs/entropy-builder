@@ -1,6 +1,7 @@
 import io
 import json
 import posixpath
+import re
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -13,6 +14,76 @@ _SKILLS_TO_COPY = [
     "segmentation.md", "competitive-intel.md", "pressure-test.md",
 ]
 _ANALYTICS_TO_COPY = ["metrics.md", "queries.md", "schemas.md"]
+
+
+_TEMPLATE_PRODUCTS = ["Tivian", "Influitive", "Lyris", "QuickSilver"]
+_TEMPLATE_NAME = "Jay"
+_TEMPLATE_NOTION_DB = "28485e927d3181c89d6cdd6fd57ea07d"
+_TEMPLATE_SECOND_BRAIN = "Khalife Second Brain"
+
+
+def _patch_skill_content(content: str, config: JobConfig) -> str:
+    """Substitute user-specific values into template skill files at vault build time."""
+    first_name = config.user_name.split()[0] if config.user_name else "you"
+    products = config.product_lines or []
+    n = len(products)
+    n_str = str(n) if products else "N"
+
+    # --- Product list substitutions (order matters: longest/most specific first) ---
+    old_backtick_slash = ", ".join(f"`{p}/`" for p in _TEMPLATE_PRODUCTS)
+    new_backtick_slash = ", ".join(f"`{p}/`" for p in products) if products else "`[products]/`"
+    content = content.replace(old_backtick_slash, new_backtick_slash)
+
+    old_plain_slash = ", ".join(f"{p}/" for p in _TEMPLATE_PRODUCTS)
+    new_plain_slash = ", ".join(f"{p}/" for p in products) if products else "[products]/"
+    content = content.replace(old_plain_slash, new_plain_slash)
+
+    old_pipe = " | ".join(_TEMPLATE_PRODUCTS)
+    new_pipe = " | ".join(products) if products else "[product]"
+    content = content.replace(old_pipe, new_pipe)
+
+    old_plain = ", ".join(_TEMPLATE_PRODUCTS)
+    new_plain = ", ".join(products) if products else "[products]"
+    content = content.replace(old_plain, new_plain)
+
+    # Remove hardcoded team-product exclusion lists (both backtick and plain variants)
+    content = re.sub(
+        r" \((?:`[^`]+`(?:, `[^`]+`)+|[A-Z][^)]+)\)"
+        r"(?= belong to the wider team| — )",
+        "",
+        content,
+    )
+
+    # --- Count substitutions (before name swap so "Jay's 4" patterns still match) ---
+    count_subs = [
+        (f"exactly {len(_TEMPLATE_PRODUCTS)} products",
+         f"exactly {n_str} product{'s' if n != 1 else ''}"),
+        (f"{_TEMPLATE_NAME}'s {len(_TEMPLATE_PRODUCTS)} direct products",
+         f"{first_name}'s {n_str} direct products"),
+        (f"{_TEMPLATE_NAME}'s {len(_TEMPLATE_PRODUCTS)} products",
+         f"{first_name}'s {n_str} products"),
+        (f"across the {len(_TEMPLATE_PRODUCTS)} products",
+         f"across the {n_str} products"),
+        (f"the {len(_TEMPLATE_PRODUCTS)} portfolio products",
+         f"the {n_str} portfolio products"),
+        (f"Scope is {_TEMPLATE_NAME}'s {len(_TEMPLATE_PRODUCTS)} products only",
+         f"Scope is {first_name}'s {n_str} products only"),
+        (f"Which of {_TEMPLATE_NAME}'s {len(_TEMPLATE_PRODUCTS)} products",
+         f"Which of {first_name}'s {n_str} products"),
+    ]
+    for old, new in count_subs:
+        content = content.replace(old, new)
+
+    # --- Name substitution (whole word, after product-count patterns) ---
+    content = re.sub(r'\bJay\b', first_name, content)
+    content = content.replace(_TEMPLATE_SECOND_BRAIN, f"{config.user_name}'s Second Brain")
+    content = content.replace(f"{first_name}-Profile", f"{first_name}-Profile")  # already correct after Jay→first_name
+
+    # --- Notion DB ID ---
+    if config.notion_database_id:
+        content = content.replace(_TEMPLATE_NOTION_DB, config.notion_database_id)
+
+    return content
 
 
 def _safe_zip_path(path: str) -> str:
@@ -78,7 +149,8 @@ def build_vault(
         for skill_name in _SKILLS_TO_COPY:
             src = skills_dir / skill_name
             if src.exists():
-                zf.writestr(f"Entropy/_skills/{skill_name}", src.read_text())
+                zf.writestr(f"Entropy/_skills/{skill_name}",
+                            _patch_skill_content(src.read_text(), config))
 
         # Analytics (copied from entropy template)
         analytics_dir = template / "Entropy" / "_analytics"
