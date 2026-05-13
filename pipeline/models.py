@@ -18,6 +18,7 @@ class JobConfig:
     entropy_template_path: str       # abs path to Jay's vault for copying templates
     readai_refresh_token: str = ""
     readai_client_id: str = ""
+    truefoundry_api_key: str = ""
     product_lines: list[str] = field(default_factory=list)  # populated after Notion pull
 
 

@@ -20,8 +20,14 @@ def _strip_fence(raw: str) -> str:
             text = m.group(1).strip()
     return text
 
-FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
-MODEL = "accounts/fireworks/models/deepseek-v4-pro"
+_TFY_URL = "https://tfy.promptlens.trilogy.com/v1/chat/completions"
+_TFY_MODEL = "claude-group/claude-haiku-4-5-20251001"
+_TFY_MAX_TOKENS = 8192
+
+_FW_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
+_FW_MODEL = "accounts/fireworks/models/deepseek-v4-pro"
+_FW_MAX_TOKENS = 131072
+
 CHUNK_SIZE = 80_000  # chars — stay under model context limit per call
 MAX_PARALLEL_CHUNKS = 4
 
@@ -69,11 +75,18 @@ Prompts must be specific. Bad: "Add more frameworks." Good: "What systems do you
 Be concise — 3 gaps maximum."""
 
 
-def _call_kimi(api_key: str, system: str, user_content: str) -> tuple[str, int]:
+def _call_kimi(
+    api_key: str,
+    system: str,
+    user_content: str,
+    url: str = _FW_URL,
+    model: str = _FW_MODEL,
+    max_tokens: int = _FW_MAX_TOKENS,
+) -> tuple[str, int]:
     """Returns (generated_text, total_tokens). Tokens fall back to char-based estimate."""
     payload = {
-        "model": MODEL,
-        "max_tokens": 131072,
+        "model": model,
+        "max_tokens": max_tokens,
         "temperature": 0.6,
         "top_p": 1,
         "top_k": 40,
@@ -143,6 +156,13 @@ def _parse_wiki_response(raw: str) -> list[VaultFile]:
         return []
 
 
+def _backend(config: JobConfig) -> tuple[str, str, str, int]:
+    """Return (api_key, url, model, max_tokens) — TrueFoundry if available, else Fireworks."""
+    if config.truefoundry_api_key:
+        return config.truefoundry_api_key, _TFY_URL, _TFY_MODEL, _TFY_MAX_TOKENS
+    return config.fireworks_api_key, _FW_URL, _FW_MODEL, _FW_MAX_TOKENS
+
+
 def generate_wiki(
     config: JobConfig,
     ingested_files: list[VaultFile],
@@ -154,6 +174,7 @@ def generate_wiki(
     of total content size. on_chunk(chunk_index, total_chunks, tokens) is called
     after each call completes.
     """
+    api_key, url, model, max_tokens = _backend(config)
     interview_block = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
 
     num_chunks = min(max(len(ingested_files), 1), MAX_PARALLEL_CHUNKS)
@@ -175,7 +196,7 @@ def generate_wiki(
     completed = [0]
 
     def _process(i: int, chunk: str) -> tuple[int, str, int]:
-        raw, tokens = _call_kimi(config.fireworks_api_key, _PASS1_SYSTEM, chunk)
+        raw, tokens = _call_kimi(api_key, _PASS1_SYSTEM, chunk, url=url, model=model, max_tokens=max_tokens)
         return i, raw, tokens
 
     with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
@@ -197,11 +218,13 @@ def generate_wiki(
 
 def analyze_gaps(config: JobConfig, wiki_files: list[VaultFile]) -> list[GapItem]:
     """Pass 2: identify gaps in the generated wiki."""
+    api_key, url, model, max_tokens = _backend(config)
     file_list = "\n".join(f"- {f.path}" for f in wiki_files)
     raw, _ = _call_kimi(
-        config.fireworks_api_key,
+        api_key,
         _PASS2_SYSTEM,
         f"GENERATED FILES:\n{file_list}",
+        url=url, model=model, max_tokens=max_tokens,
     )
     try:
         data = json.loads(_strip_fence(raw))

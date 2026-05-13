@@ -11,6 +11,7 @@ class Settings:
     notion_database_id: str = field(default_factory=lambda: os.environ.get("NOTION_DATABASE_ID", "28485e927d3181c89d6cdd6fd57ea07d"))
     notion_token: str = field(default_factory=lambda: os.environ.get("NOTION_TOKEN", ""))
     fireworks_api_key: str = field(default_factory=lambda: os.environ.get("FIREWORKS_API_KEY", ""))
+    truefoundry_api_key: str = field(default_factory=lambda: os.environ.get("TRUEFOUNDRY_API_KEY", ""))
     entropy_template_path: str = field(default_factory=lambda: os.environ.get("ENTROPY_TEMPLATE_PATH", ""))
     base_url: str = field(default_factory=lambda: os.environ.get("BASE_URL", "http://localhost:8000"))
     notion_mcp_package: str = field(default_factory=lambda: os.environ.get("NOTION_MCP_PACKAGE", "@notionhq/notion-mcp-server"))
