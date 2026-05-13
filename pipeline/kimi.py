@@ -84,20 +84,19 @@ def _call_kimi(
     max_tokens: int = _FW_MAX_TOKENS,
 ) -> tuple[str, int]:
     """Returns (generated_text, total_tokens). Tokens fall back to char-based estimate."""
-    payload = {
+    payload: dict = {
         "model": model,
         "max_tokens": max_tokens,
         "temperature": 0.6,
-        "top_p": 1,
-        "top_k": 40,
-        "presence_penalty": 0,
-        "frequency_penalty": 0,
         "stream": True,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user_content},
         ],
     }
+    if url == _FW_URL:
+        # Fireworks-specific sampling params not accepted by Claude/TrueFoundry
+        payload.update({"top_p": 1, "top_k": 40, "presence_penalty": 0, "frequency_penalty": 0})
     headers = {
         "Accept": "text/event-stream",
         "Content-Type": "application/json",
