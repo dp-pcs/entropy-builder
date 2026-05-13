@@ -206,7 +206,7 @@ def create_app() -> FastAPI:
                 "access_token": google_tokens.get("access_token", ""),
                 "refresh_token": google_tokens.get("refresh_token", ""),
                 "client_id": google_tokens.get("client_id", settings.google_client_id),
-                "client_secret": google_tokens.get("client_secret", ""),
+                "client_secret": google_tokens.get("client_secret", settings.google_client_secret),
             },
             "readai_access_token": (get_token(req.session_id, "readai") or {}).get("access_token", ""),
             "readai_refresh_token": (get_token(req.session_id, "readai") or {}).get("refresh_token", ""),
