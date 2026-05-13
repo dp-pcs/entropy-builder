@@ -39,6 +39,7 @@ def build_vault(
         # Root files
         zf.writestr("CLAUDE.md", generate_claude_md(config))
         zf.writestr(".env", _generate_env(config))
+        zf.writestr("README.md", _generate_readme(config))
 
         # 2nd brain wiki files (rename root prefix to user's brain name)
         for vf in wiki_files:
@@ -217,6 +218,50 @@ _Session log starts here._
 Vault generated via entropy.elelem.expert onboarding wizard.
 {len(customers)} customers imported from Notion.
 Run daily scan to populate email and transcript history.
+"""
+
+
+def _generate_readme(config: JobConfig) -> str:
+    today = date.today().isoformat()
+    return f"""# {config.user_name} — Entropy Intelligence System
+
+Built: {today}
+
+## What's in this vault
+
+- **`Entropy/`** — your customer intelligence system. Portfolio data, customer folders, skills, analytics.
+- **`{config.user_name}'s Second Brain/`** — your personal knowledge base. Books, frameworks, mental models, career history.
+- **`CLAUDE.md`** — the operating instructions Claude reads automatically when you open this folder as a project.
+- **`.env`** — your credentials for live data sync. Keep this private.
+
+## Setup (one-time)
+
+**Step 1 — Open in Obsidian**
+Unzip this folder, then open it as an Obsidian vault: *Open folder as vault* → select the unzipped folder.
+
+**Step 2 — Open as a Claude Code project**
+In Claude Code, open the same folder as your project root. Claude will automatically read `CLAUDE.md` and know your full context.
+
+Or in Claude Desktop: Settings → Projects → add this folder.
+
+**Step 3 — Start**
+Say one of these to get going:
+
+| What you want | Say |
+|---|---|
+| Morning briefing | `daily scan` |
+| Review your portfolio | `weekly sweep` |
+| Process a customer meeting | `debrief [Customer Name]` |
+| Triage a troubled account | `triage [Customer Name]` |
+| Build a renewal playbook | `renewal playbook for [Customer Name]` |
+
+## How the skills work
+
+The `Entropy/_skills/` folder contains workflow specs that Claude loads on demand — no installation needed. When you say `debrief Acme Corp`, Claude reads `_skills/debrief.md` and runs the full 6-step process. Everything stays inside this vault.
+
+## Keeping data fresh
+
+Your vault was built with a snapshot of your Notion portfolio and recent emails. To refresh, rebuild your vault at entropy.elelem.expert — it takes about 15 minutes and replaces the customer data with the latest from Notion, Gmail, and Read.ai.
 """
 
 
