@@ -144,7 +144,7 @@ def _process_general_thread(thread: dict) -> VaultFile | None:
     date_str = _parse_email_date(date_raw)
     safe_sender = re.sub(r"[^\w\s-]", "", sender_name).strip().replace(" ", "-")[:40]
     safe_subject = re.sub(r"[^\w\s-]", "", subject).strip().replace(" ", "-")[:50]
-    path = f"Entropy/Inbox/{safe_sender}/{date_str}_{safe_subject}.md"
+    path = f"Portfolio Brain/Inbox/{safe_sender}/{date_str}_{safe_subject}.md"
 
     content = f"""---
 sender: "{sender}"
@@ -184,7 +184,7 @@ def flag_tier2(text: str) -> bool:
 def build_email_stub(customer_name: str, product: str, subject: str,
                      sender: str, date_str: str, thread_id: str, is_tier2: bool) -> VaultFile:
     safe_subject = re.sub(r"[^\w\s-]", "", subject).strip().replace(" ", "-")[:50]
-    path = f"Entropy/{product}/{customer_name}/Emails/{date_str}_{safe_subject}.md"
+    path = f"Portfolio Brain/{product}/{customer_name}/Emails/{date_str}_{safe_subject}.md"
     tier2_flag = "true" if is_tier2 else "false"
     content = f"""---
 customer: "{customer_name}"

@@ -1,0 +1,41 @@
+{
+  "version": "1.1.0",
+  "updated": "2026-05-13",
+  "history": [
+    {
+      "version": "1.1.0",
+      "date": "2026-05-13",
+      "summary": "Renamed Entropy to Portfolio Brain; added meeting-prep and scenario-modeling skills",
+      "changes": [
+        {
+          "type": "rename",
+          "description": "Customer intelligence folder renamed from Entropy/ to Portfolio Brain/",
+          "agent_instructions": "Rename your Entropy/ folder to Portfolio Brain/. Update all wikilinks from [[Entropy/...]] to [[Portfolio Brain/...]] and update any paths in CLAUDE.md."
+        },
+        {
+          "type": "new_skill",
+          "file": "_skills/meeting-prep.md",
+          "description": "New skill: pre-meeting preparation workflow",
+          "agent_instructions": "Copy _skills/meeting-prep.md from the latest vault download into your Portfolio Brain/_skills/ folder."
+        },
+        {
+          "type": "new_skill",
+          "file": "_skills/scenario-modeling.md",
+          "description": "New skill: scenario modeling and what-if analysis",
+          "agent_instructions": "Copy _skills/scenario-modeling.md from the latest vault download into your Portfolio Brain/_skills/ folder."
+        }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-05-01",
+      "summary": "Initial release",
+      "changes": [
+        {
+          "type": "initial",
+          "description": "First version of the Entropy intelligence system template"
+        }
+      ]
+    }
+  ]
+}

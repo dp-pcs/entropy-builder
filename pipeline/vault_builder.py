@@ -12,6 +12,7 @@ _SKILLS_TO_COPY = [
     "dashboard.md", "alerting.md", "enrichment.md", "commitment-extraction.md",
     "lint.md", "renewal-countdown.md", "churn-autopsy.md", "email-draft.md",
     "segmentation.md", "competitive-intel.md", "pressure-test.md",
+    "meeting-prep.md", "scenario-modeling.md",
 ]
 _ANALYTICS_TO_COPY = ["metrics.md", "queries.md", "schemas.md"]
 
@@ -83,7 +84,35 @@ def _patch_skill_content(content: str, config: JobConfig) -> str:
     if config.notion_database_id:
         content = content.replace(_TEMPLATE_NOTION_DB, config.notion_database_id)
 
+    # --- Folder name ---
+    content = content.replace("Entropy/", "Portfolio Brain/")
+
     return content
+
+
+def _generate_changelog(version_data: dict) -> str:
+    current = version_data.get("version", "unknown")
+    lines = [
+        f"# Portfolio Brain — Changelog",
+        f"",
+        f"Current template version: **{current}**",
+        f"",
+        f"To check for updates: `GET https://entropy.elelem.expert/api/template/version`",
+        f"",
+        f"---",
+        f"",
+    ]
+    for entry in version_data.get("history", []):
+        lines.append(f"## v{entry['version']} — {entry.get('date', '')}")
+        lines.append(f"")
+        lines.append(entry.get("summary", ""))
+        lines.append(f"")
+        for change in entry.get("changes", []):
+            lines.append(f"- **{change['type']}**: {change['description']}")
+            if change.get("agent_instructions"):
+                lines.append(f"  - _Agent action: {change['agent_instructions']}_")
+        lines.append(f"")
+    return "\n".join(lines)
 
 
 def _safe_zip_path(path: str) -> str:
@@ -130,12 +159,23 @@ def build_vault(
             zf.writestr(_safe_zip_path(vf.path), vf.content)
 
         # Hot cache
-        zf.writestr("Entropy/_hot_cache.md", generate_hot_cache(config, customers))
-        zf.writestr("Entropy/_Portfolio_Dashboard.md", _portfolio_dashboard_stub(config))
-        zf.writestr("Entropy/_Action_Tracker.md", "# Action Tracker\n\n_Run ingestion skill to populate._\n")
+        zf.writestr("Portfolio Brain/_hot_cache.md", generate_hot_cache(config, customers))
+        zf.writestr("Portfolio Brain/_Portfolio_Dashboard.md", _portfolio_dashboard_stub(config))
+        zf.writestr("Portfolio Brain/_Action_Tracker.md", "# Action Tracker\n\n_Run ingestion skill to populate._\n")
 
-        # Entropy INDEX
-        zf.writestr("Entropy/INDEX.md", _entropy_index(config))
+        # Portfolio Brain INDEX
+        zf.writestr("Portfolio Brain/INDEX.md", _portfolio_brain_index(config))
+
+        # Template version + changelog (for future update checker)
+        version_src = template / "TEMPLATE_VERSION.json"
+        if version_src.exists():
+            version_data = json.loads(version_src.read_text())
+            zf.writestr("vault_version.json", json.dumps({
+                "template_version": version_data.get("version"),
+                "built_at": date.today().isoformat(),
+                "update_check_url": "https://entropy.elelem.expert/api/template/version",
+            }, indent=2))
+            zf.writestr("Portfolio Brain/CHANGELOG.md", _generate_changelog(version_data))
 
         # Gaps JSON (read by status page for inline prompts)
         zf.writestr("gaps.json", json.dumps(
@@ -145,24 +185,24 @@ def build_vault(
         ))
 
         # Skills (copied from entropy template)
-        skills_dir = template / "Entropy" / "_skills"
+        skills_dir = template / "Portfolio Brain" / "_skills"
         for skill_name in _SKILLS_TO_COPY:
             src = skills_dir / skill_name
             if src.exists():
-                zf.writestr(f"Entropy/_skills/{skill_name}",
+                zf.writestr(f"Portfolio Brain/_skills/{skill_name}",
                             _patch_skill_content(src.read_text(), config))
 
         # Analytics (copied from entropy template)
-        analytics_dir = template / "Entropy" / "_analytics"
+        analytics_dir = template / "Portfolio Brain" / "_analytics"
         for fname in _ANALYTICS_TO_COPY:
             src = analytics_dir / fname
             if src.exists():
-                zf.writestr(f"Entropy/_analytics/{fname}", src.read_text())
+                zf.writestr(f"Portfolio Brain/_analytics/{fname}", src.read_text())
 
         # Company rules (copied verbatim)
-        company_rules = template / "Entropy" / "Company-Rules.md"
+        company_rules = template / "Portfolio Brain" / "Company-Rules.md"
         if company_rules.exists():
-            zf.writestr("Entropy/Company-Rules.md", company_rules.read_text())
+            zf.writestr("Portfolio Brain/Company-Rules.md", company_rules.read_text())
 
     return buf.getvalue()
 
@@ -181,7 +221,7 @@ def generate_claude_md(config: JobConfig) -> str:
         else f"Account Manager IN [{', '.join(repr(m) for m in config.team_members)}]"
     )
 
-    return f"""# {config.user_name} — Entropy Intelligence System
+    return f"""# {config.user_name} — Portfolio Brain Intelligence System
 
 **User:** {config.user_name}
 **Role:** {role_desc}
@@ -189,15 +229,15 @@ def generate_claude_md(config: JobConfig) -> str:
 **Notion Filter:** {filter_rule}
 **Notion Database ID:** {config.notion_database_id}
 **2nd Brain:** [[{config.user_name}'s Second Brain/TRAVERSAL-INDEX|TRAVERSAL-INDEX]]
-**Entropy Entry:** [[Entropy/INDEX|INDEX]]
+**Portfolio Brain:** [[Portfolio Brain/INDEX|INDEX]]
 
 ---
 
 ## Session Start Protocol
 
-1. Read `Entropy/_hot_cache.md` — active fires, decisions, portfolio snapshot
+1. Read `Portfolio Brain/_hot_cache.md` — active fires, decisions, portfolio snapshot
 2. Determine session type (daily scan / weekly sweep / on-demand query)
-3. Load only the required skills from `Entropy/_skills/`
+3. Load only the required skills from `Portfolio Brain/_skills/`
 
 ## Skill Routing
 
@@ -295,13 +335,13 @@ Run daily scan to populate email and transcript history.
 
 def _generate_readme(config: JobConfig) -> str:
     today = date.today().isoformat()
-    return f"""# {config.user_name} — Entropy Intelligence System
+    return f"""# {config.user_name} — Portfolio Brain Intelligence System
 
 Built: {today}
 
 ## What's in this vault
 
-- **`Entropy/`** — your customer intelligence system. Portfolio data, customer folders, skills, analytics.
+- **`Portfolio Brain/`** — your customer intelligence system. Portfolio data, customer folders, skills, analytics.
 - **`{config.user_name}'s Second Brain/`** — your personal knowledge base. Books, frameworks, mental models, career history.
 - **`CLAUDE.md`** — the operating instructions Claude reads automatically when you open this folder as a project.
 - **`.env`** — your credentials for live data sync. Keep this private.
@@ -329,7 +369,7 @@ Say one of these to get going:
 
 ## How the skills work
 
-The `Entropy/_skills/` folder contains workflow specs that Claude loads on demand — no installation needed. When you say `debrief Acme Corp`, Claude reads `_skills/debrief.md` and runs the full 6-step process. Everything stays inside this vault.
+The `Portfolio Brain/_skills/` folder contains workflow specs that Claude loads on demand — no installation needed. When you say `debrief Acme Corp`, Claude reads `_skills/debrief.md` and runs the full 6-step process. Everything stays inside this vault.
 
 ## Keeping data fresh
 
@@ -339,7 +379,7 @@ Your vault was built with a snapshot of your Notion portfolio and recent emails.
 
 def _generate_env(config: JobConfig) -> str:
     google = config.google_credentials or {}
-    return f"""# Entropy environment — KEEP PRIVATE, do not commit to git or share
+    return f"""# Portfolio Brain environment — KEEP PRIVATE, do not commit to git or share
 NOTION_TOKEN={config.notion_token}
 NOTION_DATABASE_ID={config.notion_database_id}
 READAI_API_KEY={config.readai_access_token}
@@ -359,9 +399,9 @@ Load `_skills/dashboard.md` and execute.
 """
 
 
-def _entropy_index(config: JobConfig) -> str:
+def _portfolio_brain_index(config: JobConfig) -> str:
     products = ", ".join(config.product_lines) if config.product_lines else "all products"
-    return f"""# Entropy — {config.user_name}'s Customer Intelligence System
+    return f"""# Portfolio Brain — {config.user_name}'s Customer Intelligence System
 
 **Portfolio:** {products}
 **Entry point for all customer intelligence operations.**

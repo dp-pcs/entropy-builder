@@ -87,7 +87,7 @@ def build_transcript_stub(customer_name: str, product: str, title: str,
                            date_str: str, meeting_id: str, summary: str,
                            action_items: list | None = None) -> VaultFile:
     safe_title = re.sub(r"[^\w\s-]", "", title).strip().replace(" ", "-")[:50]
-    path = f"Entropy/{product}/{customer_name}/Transcripts/{date_str}_{safe_title}.md"
+    path = f"Portfolio Brain/{product}/{customer_name}/Transcripts/{date_str}_{safe_title}.md"
 
     action_items_text = "_Pending — run debrief skill_"
     if action_items:

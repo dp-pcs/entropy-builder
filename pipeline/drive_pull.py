@@ -37,7 +37,7 @@ def pull_drive_docs(config: JobConfig) -> list[VaultFile]:
 
 def _build_stub(name: str, date_str: str, file_id: str, preview: str) -> VaultFile:
     safe = re.sub(r"[^\w\s-]", "", name).strip().replace(" ", "-")[:60]
-    path = f"Entropy/Drive/{date_str}_{safe}.md"
+    path = f"Portfolio Brain/Drive/{date_str}_{safe}.md"
     content = f"""---
 source: google_drive
 file_id: "{file_id}"

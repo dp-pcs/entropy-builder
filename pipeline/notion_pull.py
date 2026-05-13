@@ -284,7 +284,7 @@ primary_contact_email: "{record.primary_email}"
 
 {chr(10).join(graph_lines)}
 """
-    path = f"Entropy/{record.product}/{record.name}/_intelligence_summary.md"
+    path = f"Portfolio Brain/{record.product}/{record.name}/_intelligence_summary.md"
     return VaultFile(path=path, content=content)
 
 
@@ -310,7 +310,7 @@ def build_customer_domains(records: list[CustomerRecord]) -> VaultFile:
         "domains": domains,
     }
     return VaultFile(
-        path="Entropy/_data/customer_domains.json",
+        path="Portfolio Brain/_data/customer_domains.json",
         content=json.dumps(data, indent=2),
     )
 
@@ -343,7 +343,7 @@ customer_count: {len(customers)}
 
 {links}
 """
-        nodes.append(VaultFile(path=f"Entropy/_nodes/{product}.md", content=content))
+        nodes.append(VaultFile(path=f"Portfolio Brain/_nodes/{product}.md", content=content))
 
     for status, customers in status_customers.items():
         links = "\n".join(f"- [[{c}/_intelligence_summary|{c}]]" for c in sorted(customers))
@@ -361,7 +361,7 @@ customer_count: {len(customers)}
 
 {links}
 """
-        nodes.append(VaultFile(path=f"Entropy/_nodes/{safe}.md", content=content))
+        nodes.append(VaultFile(path=f"Portfolio Brain/_nodes/{safe}.md", content=content))
 
     return nodes
 
