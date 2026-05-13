@@ -21,8 +21,8 @@ def _strip_fence(raw: str) -> str:
     return text
 
 _TFY_URL = "https://tfy.promptlens.trilogy.com/v1/chat/completions"
-_TFY_MODEL = "claude-group/claude-haiku-4-5-20251001"
-_TFY_MAX_TOKENS = 8192
+_TFY_MODEL = "claude-group/claude-sonnet-4-6"
+_TFY_MAX_TOKENS = 16000
 
 _FW_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 _FW_MODEL = "accounts/fireworks/models/deepseek-v4-pro"
