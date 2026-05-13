@@ -13,11 +13,11 @@ class JobConfig:
     notion_database_id: str          # shared DB ID
     google_credentials: dict         # {"access_token": str, "refresh_token": str, "client_id": str, "client_secret": str, "token_uri": str}
     readai_access_token: str
-    readai_refresh_token: str = ""
-    readai_client_id: str = ""
     fireworks_api_key: str
     interview_answers: dict          # raw wizard answers {"role": str, "books": [...], ...}
     entropy_template_path: str       # abs path to Jay's vault for copying templates
+    readai_refresh_token: str = ""
+    readai_client_id: str = ""
     product_lines: list[str] = field(default_factory=list)  # populated after Notion pull
 
 
