@@ -279,7 +279,8 @@ def generate_claude_settings(config: JobConfig) -> str:
                 }
             },
             "readai": {
-                "url": "https://api.read.ai/mcp",
+                "command": "npx",
+                "args": ["-y", "mcp-remote", "https://api.read.ai/mcp"],
             },
         }
     }, indent=2)

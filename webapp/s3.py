@@ -96,7 +96,7 @@ def delete_job(job_id: str) -> None:
 
 
 def upload_claude_settings(job_id: str, settings_json: str) -> str:
-    key = f"jobs/{job_id}/claude_settings.json"
+    key = f"jobs/{job_id}/claude_desktop_config.json"
     _client().put_object(
         Bucket=settings.s3_bucket,
         Key=key,
