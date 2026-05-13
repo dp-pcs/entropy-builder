@@ -35,7 +35,7 @@ _PASS1_SYSTEM = """You are building a personal knowledge wiki ("Second Brain") f
 
 Given their interview answers and uploaded notes, generate structured Obsidian markdown files.
 
-Return ONLY a JSON object where keys are relative file paths and values are complete file contents.
+CRITICAL: Your entire response must be a single raw JSON object. No preamble, no explanation, no markdown prose — just the JSON object starting with { and ending with }. Keys are relative file paths, values are complete file contents.
 
 Generate these files (skip a type only if there is truly no relevant content):
 - "User-Profile.md": psychological calibration profile — thinking style, strengths, blind spots, growth edges, AI behavior rules
@@ -147,12 +147,33 @@ def _call_kimi(
 
 
 def _parse_wiki_response(raw: str) -> list[VaultFile]:
-    try:
-        text = _strip_fence(raw.strip())
-        data = json.loads(text)
-        return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)]
-    except (json.JSONDecodeError, AttributeError):
-        return []
+    text = _strip_fence(raw.strip())
+    for attempt in (text, _extract_json_object(text)):
+        if attempt is None:
+            continue
+        try:
+            data = json.loads(attempt)
+            if isinstance(data, dict):
+                return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)]
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    return []
+
+
+def _extract_json_object(text: str) -> str | None:
+    """Find the outermost {...} block in text, handling nested braces."""
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    for i, ch in enumerate(text[start:], start):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return None
 
 
 def _backend(config: JobConfig) -> tuple[str, str, str, int]:
