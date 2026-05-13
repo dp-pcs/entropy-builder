@@ -22,14 +22,14 @@ def _strip_fence(raw: str) -> str:
 
 _TFY_URL = "https://tfy.promptlens.trilogy.com/v1/chat/completions"
 _TFY_MODEL = "claude-group/claude-sonnet-4-6"
-_TFY_MAX_TOKENS = 16000
+_TFY_MAX_TOKENS = 32000
 
 _FW_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 _FW_MODEL = "accounts/fireworks/models/deepseek-v4-pro"
 _FW_MAX_TOKENS = 131072
 
 CHUNK_SIZE = 80_000  # chars — stay under model context limit per call
-MAX_PARALLEL_CHUNKS = 4
+MAX_PARALLEL_CHUNKS = 8
 
 _PASS1_SYSTEM = """You are building a personal knowledge wiki ("Second Brain") for a professional.
 
