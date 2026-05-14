@@ -58,18 +58,22 @@ jobs:
 
       - name: Run sync bot
         id: sync
+        # NB: do NOT use `set -e` here. The sync script intentionally exits 2
+        # to mean "nothing to do" (no new CHANGES since last_synced_commit),
+        # and we need to interpret the exit code below.
+        shell: bash
         run: |
+          set +e
           set -o pipefail
           DRY_RUN_FLAG=""
           if [ "$DRY_RUN" = "true" ]; then
             DRY_RUN_FLAG="--dry-run"
           fi
-          # Capture stdout; on exit-code 2 (nothing to do) skip PR.
           python scripts/sync_from_entropy.py --jay-repo-path /tmp/jay-entropy $DRY_RUN_FLAG > /tmp/pr-output.txt
           EXIT=$?
           if [ "$EXIT" = "2" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "nothing to do"
+            echo "nothing to do (no new CHANGES files since last sync)"
             exit 0
           fi
           if [ "$EXIT" != "0" ]; then
@@ -77,7 +81,6 @@ jobs:
             cat /tmp/pr-output.txt
             exit "$EXIT"
           fi
-          # First line is PR title; rest is body.
           head -n 1 /tmp/pr-output.txt > /tmp/pr-title.txt
           tail -n +2 /tmp/pr-output.txt > /tmp/pr-body.txt
           echo "skip=false" >> "$GITHUB_OUTPUT"
