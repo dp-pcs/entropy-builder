@@ -67,8 +67,9 @@ def main():
             merged.setdefault(vf.path, []).append(idx)
 
         status = "OK" if meta["extraction_path"] != "failed" else "FAIL"
+        topic = data.get("topic", "?")
         print(
-            f"chunk {idx:02d}/{total-1:02d} input_files={len(input_files):2d} "
+            f"chunk {idx:02d}/{total-1:02d} topic={topic:13s} input_files={len(input_files):2d} "
             f"raw_chars={data['raw_chars']:6d} finish={finish:7s} "
             f"parse={meta['extraction_path']:14s} files={len(files):3d} {status}"
         )

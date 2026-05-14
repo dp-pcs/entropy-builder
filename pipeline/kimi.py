@@ -44,8 +44,10 @@ _FW_MAX_TOKENS = 131072
 
 CHUNK_SIZE = 80_000  # chars — stay under model context limit per call
 MAX_PARALLEL_CHUNKS = 8
+MAX_INPUT_CHARS_PER_FILE = 8000  # chars from each ingested file fed to each topic chunk
 
-_PASS1_SYSTEM = """You are building a personal knowledge wiki ("Second Brain") for a professional.
+# Base system prompt — shared format/style rules across all topic chunks.
+_PASS1_BASE_SYSTEM = """You are building a personal knowledge wiki ("Second Brain") for a professional.
 
 Given their interview answers and uploaded notes, generate structured Obsidian markdown files.
 
@@ -55,22 +57,6 @@ CRITICAL OUTPUT FORMAT — newline-delimited JSON (NDJSON):
 - Newlines inside content MUST be JSON-escaped as \\n.
 - Each line is independent — finish each file before starting the next.
 
-Example (two files):
-{"path": "User-Profile.md", "content": "---\\ntype: profile\\n---\\n\\n# Profile\\n\\nContent here."}
-{"path": "Books/Atomic Habits.md", "content": "---\\ntype: book\\n---\\n\\n# Atomic Habits"}
-
-Generate these files (skip a type only if there is truly no relevant content):
-- "User-Profile.md": psychological calibration profile — thinking style, strengths, blind spots, growth edges, AI behavior rules
-- "Books/{Title}.md": one per book — summary, key concepts, quotes, wikilinks to related concepts/frameworks
-- "Concepts/{Name}.md": extracted ideas — definition, examples, wikilinks
-- "Frameworks/{Name}.md": actionable systems — what it is, how to apply, when to use, wikilinks
-- "Principles/{Name}.md": universal truths — statement, depth, examples, wikilinks
-- "People/{Name}.md": authors, mentors — who they are, key ideas, notable works, wikilinks
-- "Quotes/{Source}-Quotes.md": memorable lines from each source
-- "MOCs/{Topic}-MOC.md": thematic maps — only create if 5+ related files exist for the topic
-- "Mental Models/{Name}.md": thinking tools — description, use case, example
-- "TRAVERSAL-INDEX.md": flat list "- [[path/file]] — one sentence description" for every file generated
-
 Every file MUST start with YAML frontmatter:
 ---
 type: <book|concept|framework|principle|person|quotes|moc|mental-model|profile>
@@ -79,7 +65,45 @@ tags: [<2-4 relevant tags>]
 aliases: [<alternate names if any>]
 ---
 
-Use wikilink syntax [[File Name]] for ALL cross-references. Generate substantive content — minimum 3 paragraphs per file."""
+Use wikilink syntax [[File Name]] for ALL cross-references. Generate substantive content — minimum 3 paragraphs per file. Be thorough across the breadth of the source material — produce one file per distinct topic, do not consolidate distinct ideas into a single file."""
+
+# Each topic chunk owns one slice of the output namespace. Every chunk sees the
+# full ingested input — only the output scope differs. This eliminates the
+# cross-chunk duplication that the old round-robin sharding produced.
+TOPIC_CHUNKS: list[tuple[str, str]] = [
+    ("profile", """Generate ONLY these files in your output, nothing else:
+
+- "User-Profile.md": ONE file — psychological calibration profile (thinking style, strengths, blind spots, growth edges, AI behavior rules). Distill the assessments (Kolbe, Working Genius, MBTI, StrengthsFinder, etc.) and identity material into a single coherent profile. Do NOT emit multiple variants.
+- "MOCs/{Topic}-MOC.md": Maps of Content — one per major theme the user cares about (e.g., Sales-MOC, Productivity-MOC, Philosophy-MOC, Customer-Success-MOC). Each MOC should list 5+ related items via wikilinks across Books/Frameworks/Concepts/Principles/People."""),
+
+    ("books", """Generate ONLY files of this type, nothing else:
+
+- "Books/{Title}.md" — one per book referenced anywhere in the source material. Include: summary, key concepts, memorable quotes, application notes, wikilinks to related Concepts/Frameworks/People. Aim for breadth — if a book is named or excerpted, generate a file for it. Do NOT generate multiple files for the same book."""),
+
+    ("quotes", """Generate ONLY files of this type, nothing else:
+
+- "Quotes/{Source}-Quotes.md" — one file per source (book, person, transcript). Each file is a curated list of memorable lines from that source with brief context for each quote."""),
+
+    ("frameworks", """Generate ONLY files of this type, nothing else:
+
+- "Frameworks/{Name}.md" — one file per distinct actionable system or methodology mentioned in the source material (e.g., MEDDICC, GTD, Blue Ocean ERRC, OKRs, Sandler, Question-Based Selling, Habit Loop, Four Laws of Behavior Change). For each: what it is, how to apply, when to use, wikilinks. Do NOT create multiple framework files for the same methodology under different names — pick the most canonical name."""),
+
+    ("concepts", """Generate ONLY files of this type, nothing else:
+
+- "Concepts/{Name}.md" — one file per distinct extracted idea. Aim for breadth: 40+ concept files spanning the entire source corpus (sales, psychology, productivity, philosophy, decision-making, etc.). Each file: definition, examples, wikilinks. Concepts are atomic ideas, NOT frameworks (which are systems) or principles (which are universal truths)."""),
+
+    ("mental_models", """Generate ONLY files of this type, nothing else:
+
+- "Mental Models/{Name}.md" — one file per thinking tool from the source material (e.g., First Principles, Inversion, Second-Order Thinking, Map vs Territory, System 1/2, Circle of Competence). Each: description, when to use, concrete example."""),
+
+    ("principles", """Generate ONLY files of this type, nothing else:
+
+- "Principles/{Name}.md" — one file per universal truth or operating rule the user holds or that the source material asserts. Each: statement, why it's true, examples, wikilinks. Principles are durable rules ("Always do X", "Never do Y") — not concepts and not frameworks."""),
+
+    ("people", """Generate ONLY files of this type, nothing else:
+
+- "People/{Name}.md" — one file per author, mentor, or notable figure referenced in the source material. Each: who they are, their key ideas, notable works, why they matter to the user, wikilinks."""),
+]
 
 _PASS2_SYSTEM = """Analyze a personal knowledge wiki for gaps against this standard structure:
 - User-Profile.md (psychological profile)
@@ -285,6 +309,32 @@ def _backend(config: JobConfig) -> tuple[str, str, str, int]:
     return config.fireworks_api_key, _FW_URL, _FW_MODEL, _FW_MAX_TOKENS
 
 
+def _build_input_block(config: JobConfig, ingested_files: list[VaultFile]) -> str:
+    """Single shared input block fed identically to every topic chunk."""
+    block = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
+    for f in ingested_files:
+        block += f"FILE: {f.path}\n{f.content[:MAX_INPUT_CHARS_PER_FILE]}\n\n"
+    return block
+
+
+def _build_traversal_index(merged: dict[str, str]) -> str:
+    """Generate TRAVERSAL-INDEX.md deterministically from merged file paths.
+
+    Pulls each file's `description:` frontmatter line for the index. Avoids
+    making the model invent an index that's blind to what the other topic
+    chunks produced."""
+    desc_re = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
+    lines = ["---", "type: index", "description: Flat traversal index for the wiki", "---", "", "# Traversal Index", ""]
+    for path in sorted(merged.keys()):
+        if path == "TRAVERSAL-INDEX.md":
+            continue
+        m = desc_re.search(merged[path])
+        desc = m.group(1).strip() if m else ""
+        link = path[:-3] if path.endswith(".md") else path
+        lines.append(f"- [[{link}]] — {desc}" if desc else f"- [[{link}]]")
+    return "\n".join(lines) + "\n"
+
+
 def generate_wiki(
     config: JobConfig,
     ingested_files: list[VaultFile],
@@ -293,17 +343,17 @@ def generate_wiki(
 ) -> list[VaultFile]:
     """Pass 1: generate wiki from interview answers + ingested content.
 
-    Always splits files across MAX_PARALLEL_CHUNKS concurrent calls regardless
-    of total content size. on_chunk(chunk_index, total_chunks, tokens) is called
-    after each call completes.
+    Topic-based chunking: every chunk sees ALL input files and owns ONE slice
+    of the output namespace (User-Profile, Books, Frameworks, Concepts, etc.).
+    This eliminates the cross-chunk duplication that round-robin sharding
+    produced (8x rewrites of User-Profile.md, etc.) while preserving full
+    input visibility for every topic.
 
-    When debug_dir is set (or env var ENTROPY_WIKI_DEBUG_DIR), writes
-    chunk_{i}.json per chunk containing the input, raw response, finish_reason,
-    and parse diagnostics. Used by scripts/replay_wiki_parse.py to iterate on
-    parser logic without re-spending model tokens.
+    on_chunk(chunk_index, total_chunks, tokens) is called as each topic call
+    completes. When debug_dir is set (or env var ENTROPY_WIKI_DEBUG_DIR),
+    writes chunk_{i}.json per chunk for offline replay analysis.
     """
     api_key, url, model, max_tokens = _backend(config)
-    interview_block = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
 
     debug_dir = debug_dir or os.environ.get("ENTROPY_WIKI_DEBUG_DIR") or None
     debug_path: Path | None = None
@@ -311,52 +361,48 @@ def generate_wiki(
         debug_path = Path(debug_dir)
         debug_path.mkdir(parents=True, exist_ok=True)
 
-    num_chunks = min(max(len(ingested_files), 1), MAX_PARALLEL_CHUNKS)
+    if not ingested_files:
+        logger.warning("[wiki] no ingested files — skipping wiki generation")
+        return []
 
-    # Distribute files round-robin across chunks so each gets a balanced mix
-    groups: list[list[VaultFile]] = [[] for _ in range(num_chunks)]
-    for i, f in enumerate(ingested_files):
-        groups[i % num_chunks].append(f)
-
-    chunks: list[tuple[str, list[str]]] = []  # (chunk_content, file_paths_in_chunk)
-    for group in groups:
-        content = interview_block
-        for f in group:
-            content += f"FILE: {f.path}\n{f.content[:2000]}\n\n"
-        chunks.append((content, [f.path for f in group]))
+    user_content = _build_input_block(config, ingested_files)
+    input_file_paths = [f.path for f in ingested_files]
 
     merged: dict[str, str] = {}
     lock = threading.Lock()
     completed = [0]
+    total = len(TOPIC_CHUNKS)
 
-    def _process(i: int, chunk: str) -> tuple[int, str, int, str | None]:
+    def _process(i: int, name: str, system: str) -> tuple[int, str, str, int, str | None]:
         raw, tokens, finish_reason = _call_kimi(
-            api_key, _PASS1_SYSTEM, chunk, url=url, model=model, max_tokens=max_tokens
+            api_key, system, user_content, url=url, model=model, max_tokens=max_tokens
         )
-        return i, raw, tokens, finish_reason
+        return i, name, raw, tokens, finish_reason
 
-    with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
-        futures = {pool.submit(_process, i, chunk): i for i, (chunk, _) in enumerate(chunks)}
+    with ThreadPoolExecutor(max_workers=min(total, MAX_PARALLEL_CHUNKS)) as pool:
+        futures = {
+            pool.submit(_process, i, name, _PASS1_BASE_SYSTEM + "\n\n" + topic_prompt): i
+            for i, (name, topic_prompt) in enumerate(TOPIC_CHUNKS)
+        }
         for future in as_completed(futures):
-            i, raw, tokens, finish_reason = future.result()
-            chunk_content, chunk_file_paths = chunks[i]
+            i, name, raw, tokens, finish_reason = future.result()
             files, parse_meta = _parse_wiki_response_with_meta(raw)
 
             logger.info(
-                "[wiki] chunk %d/%d tokens=%d raw_chars=%d finish=%s parse=%s files=%d "
-                "dropped_non_str=%d input_files=%d error=%s",
-                i + 1, len(chunks), tokens, len(raw), finish_reason or "none",
+                "[wiki] chunk %d/%d topic=%s tokens=%d raw_chars=%d finish=%s "
+                "parse=%s files=%d dropped_non_str=%d error=%s",
+                i + 1, total, name, tokens, len(raw), finish_reason or "none",
                 parse_meta["extraction_path"], len(files),
-                parse_meta["values_dropped_non_str"], len(chunk_file_paths),
-                parse_meta["error"] or "none",
+                parse_meta["values_dropped_non_str"], parse_meta["error"] or "none",
             )
 
             if debug_path:
                 artifact = {
                     "chunk_idx": i,
-                    "total_chunks": len(chunks),
-                    "input_chars": len(chunk_content),
-                    "input_files": chunk_file_paths,
+                    "total_chunks": total,
+                    "topic": name,
+                    "input_chars": len(user_content),
+                    "input_files": input_file_paths,
                     "raw_response": raw,
                     "raw_chars": len(raw),
                     "tokens": tokens,
@@ -369,21 +415,25 @@ def generate_wiki(
                         "values_dropped_non_str": parse_meta["values_dropped_non_str"],
                     },
                 }
-                (debug_path / f"chunk_{i:02d}.json").write_text(json.dumps(artifact, indent=2))
+                (debug_path / f"chunk_{i:02d}_{name}.json").write_text(json.dumps(artifact, indent=2))
 
             with lock:
                 completed[0] += 1
                 if on_chunk:
-                    on_chunk(completed[0], len(chunks), tokens)
+                    on_chunk(completed[0], total, tokens)
+                # Same-path collisions inside a topic are rare; keep the longest
+                # version rather than concatenating, so we never recreate the 8x
+                # bloat that motivated this refactor.
                 for vf in files:
-                    if vf.path in merged and vf.path != "TRAVERSAL-INDEX.md":
-                        merged[vf.path] += "\n\n" + vf.content
-                    else:
+                    existing = merged.get(vf.path)
+                    if existing is None or len(vf.content) > len(existing):
                         merged[vf.path] = vf.content
 
-    logger.info(
-        "[wiki] merge complete: %d unique files from %d chunks", len(merged), len(chunks)
-    )
+    # Generate TRAVERSAL-INDEX from the merged set — gives a complete, accurate
+    # index regardless of what each topic chunk produced.
+    merged["TRAVERSAL-INDEX.md"] = _build_traversal_index(merged)
+
+    logger.info("[wiki] merge complete: %d unique files from %d topic chunks", len(merged), total)
     return [VaultFile(path=k, content=v) for k, v in merged.items()]
 
 

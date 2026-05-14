@@ -130,10 +130,11 @@ def test_parse_with_meta_counts_dropped_non_string_values():
     assert meta["values_dropped_non_str"] == 1
 
 
-def test_generate_wiki_writes_debug_artifacts(mocker, tmp_path):
+def test_generate_wiki_writes_one_debug_artifact_per_topic(mocker, tmp_path):
+    """Topic-based chunking: each of the 8 output topics writes its own
+    artifact so we can audit per-topic generation independently."""
     body = (
         '{"path": "User-Profile.md", "content": "---\\ntype: profile\\n---\\n# Profile"}\n'
-        '{"path": "TRAVERSAL-INDEX.md", "content": "- [[User-Profile]] — profile"}\n'
     )
     mocker.patch("pipeline.kimi.requests.post",
                  return_value=_mock_sse_response(body, finish_reason="stop"))
@@ -143,19 +144,75 @@ def test_generate_wiki_writes_debug_artifacts(mocker, tmp_path):
     generate_wiki(cfg, [VaultFile("note.md", "# My Note")], debug_dir=str(debug_dir))
 
     artifacts = sorted(debug_dir.glob("chunk_*.json"))
-    assert len(artifacts) == 1
+    from pipeline.kimi import TOPIC_CHUNKS
+    assert len(artifacts) == len(TOPIC_CHUNKS)
+    # Artifact filenames include the topic name for easy inspection
+    topic_names = {name for name, _ in TOPIC_CHUNKS}
+    for art_path in artifacts:
+        assert any(t in art_path.name for t in topic_names), art_path.name
+    # All artifacts share the same input
     art = json.loads(artifacts[0].read_text())
-    assert art["chunk_idx"] == 0
     assert art["finish_reason"] == "stop"
     assert art["parse"]["extraction_path"] == "ndjson"
-    assert art["parse"]["files_count"] == 2
-    assert "User-Profile.md" in art["parse"]["files"]
     assert art["input_files"] == ["note.md"]
+
+
+def test_generate_wiki_keeps_longest_on_path_collision(mocker):
+    """When two chunks emit the same path, the longer version wins — never
+    concatenated. This is the property that kills the old 8x bloat."""
+    call_count = [0]
+
+    def fake_post(*args, **kwargs):
+        # First chunk emits a short User-Profile; subsequent emit longer ones
+        idx = call_count[0]
+        call_count[0] += 1
+        if idx == 0:
+            body = '{"path": "User-Profile.md", "content": "short"}\n'
+        else:
+            body = '{"path": "User-Profile.md", "content": "this is a much longer profile body"}\n'
+        return _mock_sse_response(body, finish_reason="stop")
+
+    mocker.patch("pipeline.kimi.requests.post", side_effect=fake_post)
+
+    cfg = _make_config()
+    files = generate_wiki(cfg, [VaultFile("note.md", "# Note")])
+    profile = next(f for f in files if f.path == "User-Profile.md")
+    assert profile.content == "this is a much longer profile body"
+    # Crucially: NOT concatenated
+    assert "short" not in profile.content
+
+
+def test_traversal_index_is_auto_generated(mocker):
+    """TRAVERSAL-INDEX.md is deterministic — assembled from merged frontmatter,
+    not invented by the model. Guarantees it's complete and accurate."""
+    body = (
+        '{"path": "Books/X.md", "content": "---\\ntype: book\\ndescription: A book about X\\n---\\n# X"}\n'
+        '{"path": "Concepts/Y.md", "content": "---\\ntype: concept\\ndescription: The concept of Y\\n---\\n# Y"}\n'
+    )
+    mocker.patch("pipeline.kimi.requests.post",
+                 return_value=_mock_sse_response(body, finish_reason="stop"))
+
+    cfg = _make_config()
+    files = generate_wiki(cfg, [VaultFile("note.md", "# Note")])
+    index = next(f for f in files if f.path == "TRAVERSAL-INDEX.md").content
+    assert "[[Books/X]]" in index
+    assert "A book about X" in index
+    assert "[[Concepts/Y]]" in index
+    assert "The concept of Y" in index
+
+
+def test_generate_wiki_handles_empty_input(mocker):
+    """No ingested files → skip wiki generation entirely, no model calls."""
+    post_mock = mocker.patch("pipeline.kimi.requests.post")
+    cfg = _make_config()
+    files = generate_wiki(cfg, [])
+    assert files == []
+    post_mock.assert_not_called()
 
 
 def test_generate_wiki_captures_truncated_response(mocker, tmp_path):
     """If the model emits the legacy JSON envelope AND truncates mid-content,
-    the envelope parser fails and we record it as a parse failure."""
+    the envelope parser fails and we record it as a parse failure per topic."""
     truncated = '{"Books/X.md": "---\\ntype: book\\n---\\n# X"  '  # never closed
     mocker.patch("pipeline.kimi.requests.post",
                  return_value=_mock_sse_response(truncated, finish_reason="length"))
@@ -164,10 +221,14 @@ def test_generate_wiki_captures_truncated_response(mocker, tmp_path):
     debug_dir = tmp_path / "wiki_debug"
     files = generate_wiki(cfg, [VaultFile("note.md", "# Note")], debug_dir=str(debug_dir))
 
-    art = json.loads((debug_dir / "chunk_00.json").read_text())
+    artifacts = sorted(debug_dir.glob("chunk_*.json"))
+    assert artifacts, "expected per-topic debug artifacts"
+    art = json.loads(artifacts[0].read_text())
     assert art["finish_reason"] == "length"
     assert art["parse"]["extraction_path"] == "failed"
-    assert files == []
+    # Wiki output is just the auto-generated TRAVERSAL-INDEX (built from an
+    # empty merged set when every chunk parse-fails)
+    assert {f.path for f in files} == {"TRAVERSAL-INDEX.md"}
 
 
 def test_parse_ndjson_basic():
