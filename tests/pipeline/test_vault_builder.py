@@ -93,3 +93,46 @@ def test_build_vault_second_brain_renamed(tmp_path):
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         names = zf.namelist()
         assert any("Jane Smith's Second Brain" in n for n in names)
+
+
+def test_rewrite_placeholder_wikilinks_strips_known_tokens():
+    """Skill templates use [[CustomerName]], [[YYYY-MM-DD]] etc. as runtime
+    placeholders. Rewrite them to angle-bracket syntax so Obsidian doesn't
+    render them as dangling wikilinks in the graph."""
+    from pipeline.vault_builder import _rewrite_placeholder_wikilinks
+    text = (
+        "Run debrief for [[CustomerName]] on [[YYYY-MM-DD]] and save to "
+        "[[filename]]. See also [[Books/Atomic-Habits]] for context."
+    )
+    out = _rewrite_placeholder_wikilinks(text)
+    assert "<CustomerName>" in out
+    assert "<YYYY-MM-DD>" in out
+    assert "<filename>" in out
+    # Real wikilinks must survive
+    assert "[[Books/Atomic-Habits]]" in out
+
+
+def test_rewrite_placeholder_wikilinks_catches_allcaps_placeholders():
+    """ALL-CAPS short tokens like [[TARGET]] are treated as placeholders by
+    convention even if not in the explicit token list."""
+    from pipeline.vault_builder import _rewrite_placeholder_wikilinks
+    out = _rewrite_placeholder_wikilinks("Apply to [[TARGET]] this week.")
+    assert "<TARGET>" in out
+    assert "[[TARGET]]" not in out
+
+
+def test_patch_skill_content_rewrites_placeholders_end_to_end(tmp_path):
+    """End-to-end: a copied skill file with placeholder wikilinks gets cleaned
+    up by _patch_skill_content."""
+    from pipeline.vault_builder import _patch_skill_content
+    cfg = _make_config(tmp_path)
+    raw = (
+        "# Debrief skill\n\n"
+        "Open the customer file [[CustomerName]] and the meeting note "
+        "[[YYYY-MM-DD_Meeting_Title]]. Save to [[filename]]."
+    )
+    patched = _patch_skill_content(raw, cfg)
+    assert "[[CustomerName]]" not in patched
+    assert "<CustomerName>" in patched
+    assert "<YYYY-MM-DD_Meeting_Title>" in patched
+    assert "<filename>" in patched

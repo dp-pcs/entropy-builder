@@ -22,6 +22,44 @@ _TEMPLATE_NAME = "Jay"
 _TEMPLATE_NOTION_DB = "28485e927d3181c89d6cdd6fd57ea07d"
 _TEMPLATE_SECOND_BRAIN = "Khalife Second Brain"
 
+# Wikilink targets used in skill templates that are RUNTIME PLACEHOLDERS, not
+# real files. They pollute Obsidian's graph as dead links if left as [[…]].
+# We rewrite them to angle-bracket syntax so the skill prose still reads as
+# "replace <CustomerName> with the actual customer" but Obsidian no longer
+# treats them as real wikilinks.
+_PLACEHOLDER_WIKILINK_TOKENS = {
+    "CustomerName", "Customer Name", "CustomerNames",
+    "Target", "Targets",
+    "filename", "Filename", "file_name",
+    "YYYY-MM-DD", "YYYY-MM-DD_Meeting_Title", "ISO-Date",
+    "Related Node 1", "Related Node 2", "Related Node N",
+    "Related Note", "Related Notes",
+    "Topic", "TopicName",
+    "ProductLine", "Product",
+    "Source", "SourceName",
+    "Quote",
+}
+_PLACEHOLDER_WIKILINK_RE = re.compile(r"\[\[([^\[\]\|\n]+?)(\|[^\[\]\n]+)?\]\]")
+
+
+def _rewrite_placeholder_wikilinks(content: str) -> str:
+    """Rewrite [[Placeholder]] tokens (CustomerName, YYYY-MM-DD, filename, etc.)
+    to <Placeholder> so they don't appear as dangling wikilinks in Obsidian.
+
+    Real wikilinks like [[Books/Atomic-Habits]] are left alone — only the
+    canonical placeholder vocabulary is rewritten."""
+    def _repair(match: re.Match) -> str:
+        target = match.group(1).strip()
+        if target in _PLACEHOLDER_WIKILINK_TOKENS:
+            return f"<{target}>"
+        # Also catch ALL-CAPS or `_`-separated tokens that read as placeholders
+        bare = target.split("/", 1)[-1]
+        if bare and bare == bare.upper() and "_" not in bare and len(bare) <= 24:
+            # e.g. [[TARGET]], [[CUSTOMER]] — placeholder by convention
+            return f"<{bare}>"
+        return match.group(0)
+    return _PLACEHOLDER_WIKILINK_RE.sub(_repair, content)
+
 
 def _patch_skill_content(content: str, config: JobConfig) -> str:
     """Substitute user-specific values into template skill files at vault build time."""
@@ -86,6 +124,12 @@ def _patch_skill_content(content: str, config: JobConfig) -> str:
 
     # --- Folder name ---
     content = content.replace("Entropy/", "Portfolio Brain/")
+
+    # --- Wikilink placeholder cleanup ---
+    # Skill templates use [[CustomerName]], [[YYYY-MM-DD]], etc. as runtime
+    # placeholders. Rewrite to <Placeholder> so Obsidian doesn't render them
+    # as dangling wikilinks in the graph.
+    content = _rewrite_placeholder_wikilinks(content)
 
     return content
 

@@ -65,7 +65,18 @@ tags: [<2-4 relevant tags>]
 aliases: [<alternate names if any>]
 ---
 
-Use wikilink syntax [[File Name]] for ALL cross-references. Generate substantive content — minimum 3 paragraphs per file. Be thorough across the breadth of the source material — produce one file per distinct topic, do not consolidate distinct ideas into a single file."""
+FILE PATH CONVENTION (strict):
+- All file names use Hyphenated-Title-Case. No spaces in file names.
+- Examples: "Concepts/Pattern-Recognition.md", "Mental-Models/First-Principles.md", "Books/Atomic-Habits.md".
+- The category folder is also hyphenated: "Mental-Models" not "Mental Models".
+
+WIKILINK INTEGRITY (strict):
+- Only emit [[wikilinks]] to paths you are actually generating in THIS output. Never link to a path you don't produce.
+- Wikilink the exact path (without .md), e.g. [[Concepts/Pattern-Recognition]], [[Mental-Models/First-Principles]].
+- Do NOT invent placeholder links like [[CustomerName]], [[Target]], [[YYYY-MM-DD]], [[Related Note]] — those are generic example tokens, not files.
+- A wikilink without a corresponding generated file is worse than no wikilink. When in doubt, write the term as bold *text* instead.
+
+Generate substantive content — minimum 3 paragraphs per file. Be thorough across the breadth of the source material — produce one file per distinct topic, do not consolidate distinct ideas into a single file."""
 
 # Each topic chunk owns one slice of the output namespace. Every chunk sees the
 # full ingested input — only the output scope differs. This eliminates the
@@ -317,6 +328,48 @@ def _build_input_block(config: JobConfig, ingested_files: list[VaultFile]) -> st
     return block
 
 
+_WIKILINK_RE = re.compile(r"\[\[([^\[\]\|\n]+?)(\|[^\[\]\n]+)?\]\]")
+
+
+def _path_set_for_links(merged: dict[str, str]) -> set[str]:
+    """Set of valid wikilink targets — paths with and without the .md extension,
+    plus the bare basename (Obsidian resolves [[Foo]] to any file named Foo.md)."""
+    targets: set[str] = set()
+    for path in merged:
+        targets.add(path)
+        if path.endswith(".md"):
+            targets.add(path[:-3])
+            targets.add(path.rsplit("/", 1)[-1][:-3])
+    return targets
+
+
+def _strip_dangling_wikilinks(merged: dict[str, str]) -> dict[str, int]:
+    """Replace [[wikilinks]] whose targets don't exist with the visible label
+    formatted as bold text. Mutates merged in place. Returns per-file counts of
+    links stripped (for diagnostics)."""
+    targets = _path_set_for_links(merged)
+    stripped_counts: dict[str, int] = {}
+
+    def _repair(match: re.Match) -> str:
+        target = match.group(1).strip()
+        alias = match.group(2)
+        # Normalize for lookup: handle anchor fragments like "Foo#Heading"
+        bare = target.split("#", 1)[0]
+        if bare in targets or bare.lstrip("/") in targets:
+            return match.group(0)  # keep — target exists
+        # Dangling: render the visible text as bold instead of a link
+        visible = alias[1:].strip() if alias else target.rsplit("/", 1)[-1]
+        return f"**{visible}**"
+
+    for path, content in list(merged.items()):
+        new_content, n = _WIKILINK_RE.subn(_repair, content)
+        replaced = sum(1 for _ in _WIKILINK_RE.finditer(content)) - sum(1 for _ in _WIKILINK_RE.finditer(new_content))
+        if replaced > 0:
+            stripped_counts[path] = replaced
+            merged[path] = new_content
+    return stripped_counts
+
+
 def _build_traversal_index(merged: dict[str, str]) -> str:
     """Generate TRAVERSAL-INDEX.md deterministically from merged file paths.
 
@@ -428,6 +481,15 @@ def generate_wiki(
                     existing = merged.get(vf.path)
                     if existing is None or len(vf.content) > len(existing):
                         merged[vf.path] = vf.content
+
+    # Strip dangling wikilinks BEFORE generating the traversal index, so the
+    # index reflects only the surviving link graph.
+    stripped = _strip_dangling_wikilinks(merged)
+    if stripped:
+        logger.info(
+            "[wiki] dropped %d dangling wikilinks across %d file(s)",
+            sum(stripped.values()), len(stripped),
+        )
 
     # Generate TRAVERSAL-INDEX from the merged set — gives a complete, accurate
     # index regardless of what each topic chunk produced.

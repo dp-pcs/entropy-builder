@@ -210,6 +210,38 @@ def test_generate_wiki_handles_empty_input(mocker):
     post_mock.assert_not_called()
 
 
+def test_dangling_wikilinks_are_stripped(mocker):
+    """Links to files that no chunk produced get replaced with bold text so
+    Obsidian doesn't show a graph full of dead links."""
+    body = (
+        '{"path": "Books/Atomic-Habits.md", "content": "Connects to '
+        '[[Concepts/Compound-Growth]] and [[Concepts/Missing-Topic]] and '
+        '[[Books/Atomic-Habits]] itself."}\n'
+        '{"path": "Concepts/Compound-Growth.md", "content": "see [[Books/Atomic-Habits]]"}\n'
+    )
+    mocker.patch("pipeline.kimi.requests.post",
+                 return_value=_mock_sse_response(body, finish_reason="stop"))
+
+    cfg = _make_config()
+    files = generate_wiki(cfg, [VaultFile("note.md", "# Note")])
+    book = next(f for f in files if f.path == "Books/Atomic-Habits.md")
+    # Existing targets preserved
+    assert "[[Concepts/Compound-Growth]]" in book.content
+    assert "[[Books/Atomic-Habits]]" in book.content
+    # Missing target rewritten to bold so the graph stays clean
+    assert "[[Concepts/Missing-Topic]]" not in book.content
+    assert "**Missing-Topic**" in book.content
+
+
+def test_dangling_wikilink_uses_alias_when_present():
+    """When a dangling link has a |alias, the visible alias becomes the bold text."""
+    from pipeline.kimi import _strip_dangling_wikilinks
+    merged = {"Books/Real.md": "see [[Concepts/Fake|the fake one]] and [[Books/Real]]"}
+    _strip_dangling_wikilinks(merged)
+    assert "**the fake one**" in merged["Books/Real.md"]
+    assert "[[Books/Real]]" in merged["Books/Real.md"]
+
+
 def test_generate_wiki_captures_truncated_response(mocker, tmp_path):
     """If the model emits the legacy JSON envelope AND truncates mid-content,
     the envelope parser fails and we record it as a parse failure per topic."""
