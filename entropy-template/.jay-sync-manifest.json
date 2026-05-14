@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "source_repo": "jaykhalife/entropy",
+  "source_branch": "main",
+  "last_synced_commit": "8efff942b9d32c5b6a5b327ab05cef37ecddd0c9",
+  "last_synced_at": "2026-05-14T05:35:00Z",
+  "tracked_paths": [
+    "Portfolio Brain/_skills/",
+    "Portfolio Brain/_analytics/",
+    "Portfolio Brain/Company-Rules.md"
+  ],
+  "files": {
+    "Portfolio Brain/_skills/alerting.md": {
+      "source_sha256": "d9ce0083ad0d17923f3103d7640c9a7e6e765c2fb2eb3fa840cc60a5365f300a",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/alerting.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/churn-autopsy.md": {
+      "source_sha256": "54946a6418293a4f2c63af03070c54785ac8468521cfd5abcf8cbe0fe993814f",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/churn-autopsy.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/commitment-extraction.md": {
+      "source_sha256": "8dc3b716d088965104e66a615907dac720304ddaa0d77d988bdb52e66d59895f",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/commitment-extraction.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/competitive-intel.md": {
+      "source_sha256": "a2b1d9732e43d758c2d52dbbc0a06fe671efd882bb2808a240b4a3145f1bcacb",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/competitive-intel.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/dashboard.md": {
+      "source_sha256": "a3aa310136e098d470e65ca4880657ddf96ec255e978a632adb6697c9a02cbfd",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/dashboard.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/debrief.md": {
+      "source_sha256": "0c3774f33b2c4b3e808f85b29bf9448807c17c71bddb30892b9259a39b6f26bf",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/debrief.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/email-draft.md": {
+      "source_sha256": "a4370d16c775ba49c7176fdd1a7771ca73b7ef00ec9913b0bc4beeb812f27077",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/email-draft.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/enrichment.md": {
+      "source_sha256": "3279e9f8017de603a6db7ad7c065302cc39750f2811e196104e3287f5ab5c302",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/enrichment.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/health.md": {
+      "source_sha256": "768f57acc2fa48623356ec37648850ab0dfc43f5e5bd395dcb8cf3eacb6bc87d",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/health.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/ingestion.md": {
+      "source_sha256": "405b401b28e52e3d9617a55cd114463674c9aa527481446baf3e06bb79d8045a",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/ingestion.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/lint.md": {
+      "source_sha256": "b7805f49a8ac50f2975a16999b588eb0c296037656b175492a9b1a9c5bb8df62",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/lint.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/meeting-prep.md": {
+      "source_sha256": "433744e887bc75be35c9a2f18e735a1792404b03c10b86478388957814087df5",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/meeting-prep.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/playbook.md": {
+      "source_sha256": "d2f1995ab772340aa94b88eb6b6ac0676e7a2ae9a4adff297ef5ce962aad76a2",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/playbook.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/pressure-test.md": {
+      "source_sha256": "39fcb048fa4daa72808ad4103c7f885c1dd8fc839b203999add51c598ed13c1f",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/pressure-test.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/renewal-countdown.md": {
+      "source_sha256": "81829a8a7bca3a04efff8205f664e97e9d1c706d97da4ec205b411d716c6add8",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/renewal-countdown.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/scenario-modeling.md": {
+      "source_sha256": "80a821311eed327896e87da9b44a21841a7af12fa69547ed241a6942f7ac8bdf",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/scenario-modeling.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/segmentation.md": {
+      "source_sha256": "908c5c0a53d621c9239daae828147a52e7725fb88ada108c58608949ea63c26d",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/segmentation.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_skills/triage.md": {
+      "source_sha256": "33e7437e8140c446cfe422f0ed4ee3eb1e920d6775f7a7118608a123443d4351",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/triage.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_analytics/CLAUDE.md": {
+      "source_sha256": "59cc3270f61718592209c7c5455e2ee28b80d1bb4847294680803e3c5beb28b2",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/CLAUDE.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_analytics/metrics.md": {
+      "source_sha256": "2bf6db2d9540c5a7a76016e708702590742795da9abe9abfd83e389e82031fa1",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/metrics.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_analytics/queries.md": {
+      "source_sha256": "bd4a71d1679ef5e0f63149732211507e118736bef6e1260474d22edeaf241bd0",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/queries.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/_analytics/schemas.md": {
+      "source_sha256": "2d12fe66e703a9deafb7dcc9dd010e0704fd33edc974f137b2d40928aea3bbcb",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/schemas.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    },
+    "Portfolio Brain/Company-Rules.md": {
+      "source_sha256": "726a74b0a7fda79d761e2c6799196155ca7d463535f7586ce8182cf9732503ce",
+      "dest_path_in_template": "entropy-template/Portfolio Brain/Company-Rules.md",
+      "first_seen_version": "bootstrap",
+      "last_updated_version": "bootstrap"
+    }
+  },
+  "ingested_changes": []
+}

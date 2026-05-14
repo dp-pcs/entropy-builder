@@ -1,0 +1,114 @@
+name: Sync from Jay's Entropy repo
+
+on:
+  schedule:
+    # Every 15 minutes — Jay's repo is private but small; cheap to poll.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run without modifying entropy-template/ (PR body still printed in logs)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-from-entropy
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      DRY_RUN: ${{ github.event.inputs.dry_run }}
+    steps:
+      - name: Checkout entropy-builder
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyYAML
+
+      - name: Clone Jay's Entropy repo
+        env:
+          JAY_REPO_TOKEN: ${{ secrets.JAY_REPO_TOKEN }}
+        run: |
+          if [ -z "$JAY_REPO_TOKEN" ]; then
+            echo "::error::JAY_REPO_TOKEN secret is not set. Create a PAT with read access to jaykhalife/entropy and add it as a repo secret."
+            exit 1
+          fi
+          git clone --depth 50 --branch main \
+            "https://x-access-token:${JAY_REPO_TOKEN}@github.com/jaykhalife/entropy.git" \
+            /tmp/jay-entropy
+
+      - name: Run sync bot
+        id: sync
+        run: |
+          set -o pipefail
+          DRY_RUN_FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          # Capture stdout; on exit-code 2 (nothing to do) skip PR.
+          python scripts/sync_from_entropy.py --jay-repo-path /tmp/jay-entropy $DRY_RUN_FLAG > /tmp/pr-output.txt
+          EXIT=$?
+          if [ "$EXIT" = "2" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "nothing to do"
+            exit 0
+          fi
+          if [ "$EXIT" != "0" ]; then
+            echo "::error::sync script failed with exit code $EXIT"
+            cat /tmp/pr-output.txt
+            exit "$EXIT"
+          fi
+          # First line is PR title; rest is body.
+          head -n 1 /tmp/pr-output.txt > /tmp/pr-title.txt
+          tail -n +2 /tmp/pr-output.txt > /tmp/pr-body.txt
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        if: steps.sync.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          # Read sync-bot-generated title; sanitize to alnum/dot/dash for branch name.
+          TITLE=$(cat /tmp/pr-title.txt)
+          # Extract a semver suffix; fall back to "drift" if none present.
+          BRANCH_SUFFIX=$(printf "%s" "$TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
+          if [ -z "$BRANCH_SUFFIX" ]; then
+            BRANCH_SUFFIX="drift"
+          fi
+          BRANCH="sync/jay-${BRANCH_SUFFIX}-$(date +%s)"
+          git config user.name "entropy-sync-bot"
+          git config user.email "noreply@anthropic.com"
+          git checkout -b "$BRANCH"
+          git add entropy-template/
+          if git diff --staged --quiet; then
+            # Drift-only PR with no template changes — anchor with an empty commit.
+            git commit --allow-empty -m "$TITLE"
+          else
+            git commit -m "$TITLE"
+          fi
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "$TITLE" \
+            --body-file /tmp/pr-body.txt \
+            --base main \
+            --head "$BRANCH"
