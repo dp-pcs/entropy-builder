@@ -1,6 +1,7 @@
 # webapp/jobs.py
 import json
 import time
+import traceback
 import uuid
 from datetime import datetime, timezone
 
@@ -212,7 +213,9 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
             log_activity(job_id, f"Fetched {len(transcript_files)} transcript(s)", kind="info")
         except Exception as exc:
             transcript_files = []
-            log_activity(job_id, f"read.ai skipped: {exc}", kind="error")
+            tb = traceback.format_exc().splitlines()
+            origin = next((ln.strip() for ln in reversed(tb) if "readai_pull" in ln), "")
+            log_activity(job_id, f"read.ai skipped: {type(exc).__name__}: {exc} | at {origin}", kind="error")
         set_current_activity(job_id, None)
 
         # --- Assembly ---

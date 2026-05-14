@@ -37,16 +37,25 @@ def test_parse_wiki_response_invalid_json_returns_empty():
     assert files == []
 
 
+def _sse_lines(content: str) -> list[bytes]:
+    """Build minimal SSE stream wrapping `content` as a single delta chunk."""
+    delta = json.dumps({"choices": [{"delta": {"content": content}}]})
+    return [f"data: {delta}".encode(), b"data: [DONE]"]
+
+
+def _mock_sse_response(content: str) -> MagicMock:
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.iter_lines.return_value = iter(_sse_lines(content))
+    return resp
+
+
 def test_generate_wiki_calls_fireworks(mocker):
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{"message": {"content": json.dumps({
-            "User-Profile.md": "---\ntype: profile\n---\n# Profile",
-            "TRAVERSAL-INDEX.md": "- [[User-Profile]] — profile"
-        })}}]
-    }
-    mock_response.raise_for_status = MagicMock()
-    mocker.patch("pipeline.kimi.requests.post", return_value=mock_response)
+    body = json.dumps({
+        "User-Profile.md": "---\ntype: profile\n---\n# Profile",
+        "TRAVERSAL-INDEX.md": "- [[User-Profile]] — profile",
+    })
+    mocker.patch("pipeline.kimi.requests.post", return_value=_mock_sse_response(body))
 
     cfg = _make_config()
     files = generate_wiki(cfg, [VaultFile("note.md", "# My Note")])
@@ -54,15 +63,11 @@ def test_generate_wiki_calls_fireworks(mocker):
 
 
 def test_analyze_gaps_returns_gap_items(mocker):
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{"message": {"content": json.dumps([
-            {"category": "psych_profile", "description": "No profile",
-             "prompt": "Do you have a DiSC result?", "upload_accepted": True}
-        ])}}]
-    }
-    mock_response.raise_for_status = MagicMock()
-    mocker.patch("pipeline.kimi.requests.post", return_value=mock_response)
+    body = json.dumps([
+        {"category": "psych_profile", "description": "No profile",
+         "prompt": "Do you have a DiSC result?", "upload_accepted": True}
+    ])
+    mocker.patch("pipeline.kimi.requests.post", return_value=_mock_sse_response(body))
 
     cfg = _make_config()
     gaps = analyze_gaps(cfg, [VaultFile("Books/Atomic Habits.md", "# AH")])
@@ -72,12 +77,7 @@ def test_analyze_gaps_returns_gap_items(mocker):
 
 
 def test_analyze_gaps_returns_empty_on_no_gaps(mocker):
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{"message": {"content": "[]"}}]
-    }
-    mock_response.raise_for_status = MagicMock()
-    mocker.patch("pipeline.kimi.requests.post", return_value=mock_response)
+    mocker.patch("pipeline.kimi.requests.post", return_value=_mock_sse_response("[]"))
 
     cfg = _make_config()
     gaps = analyze_gaps(cfg, [VaultFile("User-Profile.md", "# P")])

@@ -72,8 +72,15 @@ def pull_transcripts(config: JobConfig, domains: dict) -> list[VaultFile]:
 
 
 def match_meeting_to_customer(meeting: dict, domains: dict) -> dict | None:
-    for participant in meeting.get("participants", []):
-        email = participant.get("email", "")
+    # read.ai sometimes returns participants as bare email strings and sometimes
+    # as objects ({"email": "..."}). Handle both.
+    for participant in meeting.get("participants") or []:
+        if isinstance(participant, str):
+            email = participant
+        elif isinstance(participant, dict):
+            email = participant.get("email", "") or ""
+        else:
+            continue
         if "@" not in email:
             continue
         domain = email.split("@")[1].lower()
@@ -93,9 +100,14 @@ def build_transcript_stub(customer_name: str, product: str, title: str,
     if action_items:
         lines = []
         for item in action_items:
-            text = item.get("text") or item.get("description") or str(item)
-            assignee = item.get("assignee") or item.get("owner") or ""
-            due = item.get("due_date") or item.get("due") or ""
+            if isinstance(item, str):
+                text, assignee, due = item, "", ""
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("description") or str(item)
+                assignee = item.get("assignee") or item.get("owner") or ""
+                due = item.get("due_date") or item.get("due") or ""
+            else:
+                continue
             line = f"- {text}"
             if assignee:
                 line += f" ({assignee})"

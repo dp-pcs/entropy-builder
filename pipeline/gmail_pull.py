@@ -13,6 +13,22 @@ TIER2_KEYWORDS = [
     "not renewing", "looking elsewhere", "switching",
 ]
 
+# Senders on these domains are the user's own org — never a customer match.
+# Per Entropy _skills/ingestion.md role-classification table.
+INTERNAL_DOMAINS = {"trilogy.com", "aurea.com", "skyvera.com"}
+
+# Reseller domains route to many customers; preserve the thread but flag for
+# subject/body disambiguation downstream (per _skills/ingestion.md:150).
+RESELLER_DOMAINS = {
+    "shi.com", "carahsoft.com", "bechtle.com", "softwareone.com",
+    "penril.net", "tekservinc.com",
+}
+
+
+def _extract_email_addr(from_header: str) -> str:
+    m = re.search(r"<(.+?)>", from_header)
+    return (m.group(1) if m else from_header).strip()
+
 
 def pull_emails(config: JobConfig, domains: dict) -> list[VaultFile]:
     """Pull last 90 days of Gmail and match to customers via domains dict."""
@@ -42,42 +58,85 @@ def pull_emails(config: JobConfig, domains: dict) -> list[VaultFile]:
 
     stubs = []
     for tid in thread_ids:
-        thread = service.users().threads().get(userId="me", id=tid, format="metadata",
-                                                metadataHeaders=["Subject", "From", "Date"]).execute()
+        # format="full" — needed so _extract_body can read message bodies for
+        # Tier-2 keyword detection. format="metadata" returns headers only and
+        # silently empties the body, making body-based Tier-2 a no-op.
+        thread = service.users().threads().get(userId="me", id=tid, format="full").execute()
         stubs.extend(_process_thread(thread, domains))
     return stubs
+
+
+def _thread_text_for_tier2(messages: list) -> str:
+    """Concatenate every subject + snippet + body across a thread for keyword scan."""
+    parts = []
+    for msg in messages:
+        payload = msg.get("payload", {}) or {}
+        for h in payload.get("headers", []) or []:
+            if h.get("name") == "Subject":
+                parts.append(h.get("value", ""))
+        snippet = msg.get("snippet")
+        if snippet:
+            parts.append(snippet)
+        body = _extract_body(msg)
+        if body:
+            parts.append(body)
+    return " ".join(parts)
 
 
 def _process_thread(thread: dict, domains: dict) -> list[VaultFile]:
     messages = thread.get("messages", [])
     if not messages:
         return []
-    headers = {h["name"]: h["value"] for h in messages[0].get("payload", {}).get("headers", [])}
-    sender = headers.get("From", "")
-    subject = headers.get("Subject", "(no subject)")
-    date_raw = headers.get("Date", "")
 
-    email_addr = re.search(r"<(.+?)>", sender)
-    email_addr = email_addr.group(1) if email_addr else sender
+    # Walk every message in the thread — not just messages[0]. The user often
+    # initiates threads to customers, so the first sender is internal and the
+    # real customer signal is in later replies.
+    customer_info = None
+    reseller_domain = None
+    for msg in messages:
+        msg_headers = {h["name"]: h["value"] for h in msg.get("payload", {}).get("headers", [])}
+        email_addr = _extract_email_addr(msg_headers.get("From", ""))
+        if "@" not in email_addr:
+            continue
+        domain = email_addr.split("@")[1].lower()
+        if domain in INTERNAL_DOMAINS:
+            continue
+        if domain in RESELLER_DOMAINS:
+            reseller_domain = reseller_domain or domain
+            continue
+        info = domains.get("domains", {}).get(domain)
+        if info:
+            customer_info = info
+            break
 
-    customer_info = match_domain(email_addr, domains)
-    if not customer_info:
-        return []
+    first = {h["name"]: h["value"] for h in messages[0].get("payload", {}).get("headers", [])}
+    sender = first.get("From", "")
+    subject = first.get("Subject", "(no subject)")
+    date_str = _parse_email_date(first.get("Date", ""))
+    is_t2 = flag_tier2(_thread_text_for_tier2(messages))
 
-    body_text = _extract_body(messages[0])
-    is_t2 = flag_tier2(subject + " " + body_text)
-    date_str = _parse_email_date(date_raw)
+    if customer_info:
+        return [build_email_stub(
+            customer_name=customer_info["customer"],
+            product=customer_info["product"],
+            subject=subject,
+            sender=sender,
+            date_str=date_str,
+            thread_id=thread["id"],
+            is_tier2=is_t2,
+        )]
 
-    stub = build_email_stub(
-        customer_name=customer_info["customer"],
-        product=customer_info["product"],
-        subject=subject,
-        sender=sender,
-        date_str=date_str,
-        thread_id=thread["id"],
-        is_tier2=is_t2,
-    )
-    return [stub]
+    if reseller_domain:
+        return [build_reseller_stub(
+            reseller_domain=reseller_domain,
+            subject=subject,
+            sender=sender,
+            date_str=date_str,
+            thread_id=thread["id"],
+            is_tier2=is_t2,
+        )]
+
+    return []
 
 
 def pull_general_emails(config: JobConfig) -> list[VaultFile]:
@@ -130,8 +189,7 @@ def _process_general_thread(thread: dict) -> VaultFile | None:
     subject = headers.get("Subject", "(no subject)")
     date_raw = headers.get("Date", "")
 
-    email_addr = re.search(r"<(.+?)>", sender)
-    email_addr = email_addr.group(1) if email_addr else sender
+    email_addr = _extract_email_addr(sender)
 
     # Skip obvious automated senders
     automated = ["noreply", "no-reply", "donotreply", "notifications@", "alerts@", "mailer-daemon"]
@@ -208,6 +266,43 @@ _[Auto-ingested stub — run debrief skill to extract full summary]_
 ## Key Points
 
 _Pending analysis_
+"""
+    return VaultFile(path=path, content=content)
+
+
+def build_reseller_stub(reseller_domain: str, subject: str, sender: str,
+                         date_str: str, thread_id: str, is_tier2: bool) -> VaultFile:
+    """Preserve threads where the only external sender is a known reseller.
+
+    Resellers map to many customers, so the customer can't be resolved from the
+    domain alone. Downstream skills disambiguate via subject/body content
+    (see _skills/ingestion.md:150).
+    """
+    safe_subject = re.sub(r"[^\w\s-]", "", subject).strip().replace(" ", "-")[:50]
+    path = f"Portfolio Brain/_inbox/Resellers/{reseller_domain}/{date_str}_{safe_subject}.md"
+    tier2_flag = "true" if is_tier2 else "false"
+    content = f"""---
+ambiguous: true
+reseller_domain: "{reseller_domain}"
+date: "{date_str}"
+thread_id: "{thread_id}"
+tier2: {tier2_flag}
+tags: [email, reseller, ambiguous]
+---
+
+# {subject}
+
+**From:** {sender}
+**Date:** {date_str}
+**Reseller:** {reseller_domain}
+
+## Customer
+
+_Unresolved — disambiguate via subject/body content. Reseller domain maps to multiple customers._
+
+## Summary
+
+_[Auto-ingested stub — run debrief skill to extract summary and resolve customer]_
 """
     return VaultFile(path=path, content=content)
 

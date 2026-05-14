@@ -13,13 +13,14 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _make_config(tmp_path):
-    (tmp_path / "Entropy" / "_skills").mkdir(parents=True)
-    (tmp_path / "Entropy" / "_analytics").mkdir(parents=True)
+    template_root = tmp_path / "Portfolio Brain"
+    (template_root / "_skills").mkdir(parents=True)
+    (template_root / "_analytics").mkdir(parents=True)
     for skill in ["triage.md", "ingestion.md", "dashboard.md"]:
-        (tmp_path / "Entropy" / "_skills" / skill).write_text(f"# {skill}")
+        (template_root / "_skills" / skill).write_text(f"# {skill}")
     for analytics in ["metrics.md", "queries.md", "schemas.md"]:
-        (tmp_path / "Entropy" / "_analytics" / analytics).write_text(f"# {analytics}")
-    (tmp_path / "Entropy" / "Company-Rules.md").write_text("# Company Rules")
+        (template_root / "_analytics" / analytics).write_text(f"# {analytics}")
+    (template_root / "Company-Rules.md").write_text("# Company Rules")
     return JobConfig(
         user_name="Jane Smith", user_role="ic", account_manager_name="Jane Smith",
         team_members=[], notion_token="tok", notion_database_id="db123",
@@ -29,33 +30,33 @@ def _make_config(tmp_path):
     )
 
 
+def _sse_response(content: str) -> MagicMock:
+    """Mock an SSE-streaming Kimi response carrying `content` as one delta chunk."""
+    delta = json.dumps({"choices": [{"delta": {"content": content}}]})
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.iter_lines.return_value = iter([f"data: {delta}".encode(), b"data: [DONE]"])
+    return resp
+
+
 def test_full_pipeline_produces_valid_vault(tmp_path, mocker):
-    # Mock Kimi to return predictable wiki files
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {"choices": [{"message": {"content": json.dumps({
+    wiki_body = json.dumps({
         "User-Profile.md": "---\ntype: profile\ndescription: Jane's profile\ntags: []\naliases: []\n---\n# Jane Smith\n\nHigh D, High C. Analytical, systematic.",
         "Books/Never Split the Difference.md": "---\ntype: book\ndescription: Negotiation\ntags: [negotiation]\naliases: []\n---\n# Never Split the Difference\n\nBy Chris Voss.",
         "TRAVERSAL-INDEX.md": "- [[User-Profile]] — Jane's profile\n- [[Books/Never Split the Difference]] — Negotiation",
-    })}}]}
-    mock_resp.raise_for_status = MagicMock()
-    mocker.patch("pipeline.kimi.requests.post", return_value=mock_resp)
+    })
+    mocker.patch("pipeline.kimi.requests.post", return_value=_sse_response(wiki_body))
 
-    # Ingest a sample file
     md_source = {"type": "file", "content": b"# My Notes\nSome ideas.", "filename": "notes.md"}
     ingested = ingest([md_source])
     assert len(ingested) == 1
 
-    # Generate wiki
     from pipeline.kimi import generate_wiki, analyze_gaps
     cfg = _make_config(tmp_path)
     wiki_files = generate_wiki(cfg, ingested)
     assert any("User-Profile" in f.path for f in wiki_files)
 
-    # Mock gap analysis to return no gaps
-    mock_resp2 = MagicMock()
-    mock_resp2.json.return_value = {"choices": [{"message": {"content": "[]"}}]}
-    mock_resp2.raise_for_status = MagicMock()
-    mocker.patch("pipeline.kimi.requests.post", return_value=mock_resp2)
+    mocker.patch("pipeline.kimi.requests.post", return_value=_sse_response("[]"))
     gaps = analyze_gaps(cfg, wiki_files)
     assert gaps == []
 

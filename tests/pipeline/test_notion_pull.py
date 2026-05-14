@@ -58,7 +58,7 @@ def test_build_intelligence_summary_valid_frontmatter():
     rows = _load_rows()
     record = parse_notion_rows(rows)[0]
     vf = build_intelligence_summary(record)
-    assert vf.path == "Entropy/Influitive/Blackbaud/_intelligence_summary.md"
+    assert vf.path == "Portfolio Brain/Influitive/Blackbaud/_intelligence_summary.md"
     assert "type: intelligence-summary" in vf.content
     assert "arr: 63818.76" in vf.content
     assert 'renewal_date: "2026-09-15"' in vf.content
@@ -86,16 +86,23 @@ def test_build_hub_nodes_creates_product_node():
 
 
 def test_pull_customers_filters_by_account_manager(mocker):
-    # pull_customers calls notion SDK — mock the query
-    mock_notion = MagicMock()
-    mock_notion.databases.query.return_value = {
-        "results": [],
-        "has_more": False
-    }
-    mocker.patch("pipeline.notion_pull.Client", return_value=mock_notion)
+    # pull_customers calls Notion's HTTP API directly (not the SDK) and filters
+    # by account-manager name in Python after fetch — the People property type
+    # rejects rich_text filter syntax server-side. See notion_pull.pull_customers.
+    def _post(url, headers=None, json=None, timeout=None):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        if url.endswith("/search"):
+            resp.json.return_value = {"results": [{"id": "db-abc"}]}
+        else:  # databases/{id}/query
+            resp.json.return_value = {"results": [], "has_more": False, "next_cursor": None}
+        return resp
+
+    post_mock = mocker.patch("pipeline.notion_pull.requests.post", side_effect=_post)
     cfg = _make_config()
     records = pull_customers(cfg)
-    # Verify filter was applied
-    call_kwargs = mock_notion.databases.query.call_args[1]
-    assert call_kwargs["filter"]["property"] == "Account Manager"
     assert records == []
+    # At minimum: discovered the database and issued a query against it.
+    urls = [call.args[0] for call in post_mock.call_args_list]
+    assert any(u.endswith("/search") for u in urls)
+    assert any("/databases/" in u and u.endswith("/query") for u in urls)

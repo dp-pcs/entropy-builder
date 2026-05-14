@@ -8,12 +8,14 @@ from pipeline.models import JobConfig, CustomerRecord, VaultFile, GapItem
 
 
 def _make_config(tmp_path):
-    # Create minimal entropy template structure
-    (tmp_path / "Entropy" / "_skills").mkdir(parents=True)
-    (tmp_path / "Entropy" / "_analytics").mkdir(parents=True)
-    (tmp_path / "Entropy" / "_skills" / "triage.md").write_text("# Triage Skill")
-    (tmp_path / "Entropy" / "_analytics" / "metrics.md").write_text("# Metrics")
-    (tmp_path / "Entropy" / "Company-Rules.md").write_text("# Company Rules")
+    # Create minimal template structure. build_vault reads from "Portfolio Brain/"
+    # under entropy_template_path (renamed from "Entropy/" in commit de8b773).
+    template_root = tmp_path / "Portfolio Brain"
+    (template_root / "_skills").mkdir(parents=True)
+    (template_root / "_analytics").mkdir(parents=True)
+    (template_root / "_skills" / "triage.md").write_text("# Triage Skill")
+    (template_root / "_analytics" / "metrics.md").write_text("# Metrics")
+    (template_root / "Company-Rules.md").write_text("# Company Rules")
 
     return JobConfig(
         user_name="Jane Smith", user_role="ic", account_manager_name="Jane Smith",

@@ -11,7 +11,7 @@ DOMAINS = {
 SAMPLE_MEETING = {
     "id": "meet123",
     "title": "Quarterly Business Review",
-    "date": "2026-05-06T14:00:00Z",
+    "start_time_ms": 1714999200000,  # 2026-05-06 14:00 UTC
     "participants": [
         {"email": "me@mycompany.com"},
         {"email": "christine.newman@blackbaud.com"},
@@ -40,14 +40,14 @@ def test_build_transcript_stub_valid_path():
         meeting_id="meet123",
         summary="Discussed renewal timeline.",
     )
-    assert stub.path == "Entropy/Influitive/Blackbaud/Transcripts/2026-05-06_Quarterly-Business-Review.md"
+    assert stub.path == "Portfolio Brain/Influitive/Blackbaud/Transcripts/2026-05-06_Quarterly-Business-Review.md"
     assert "meet123" in stub.content
     assert "Discussed renewal timeline." in stub.content
 
 
 def test_pull_transcripts_calls_api(mocker):
     mock_get = mocker.patch("pipeline.readai_pull.requests.get")
-    mock_get.return_value.json.return_value = {"meetings": [SAMPLE_MEETING], "next_page_token": None}
+    mock_get.return_value.json.return_value = {"data": [SAMPLE_MEETING], "has_more": False}
     mock_get.return_value.raise_for_status = MagicMock()
 
     from pipeline.models import JobConfig
@@ -63,3 +63,30 @@ def test_pull_transcripts_calls_api(mocker):
     # Verify API key was sent in headers
     call_kwargs = mock_get.call_args
     assert "key123" in str(call_kwargs)
+
+
+def test_match_meeting_with_string_participants():
+    """read.ai may return participants as bare email strings, not objects."""
+    meeting = {"participants": ["me@mycompany.com", "christine.newman@blackbaud.com"]}
+    customer = match_meeting_to_customer(meeting, DOMAINS)
+    assert customer is not None
+    assert customer["customer"] == "Blackbaud"
+
+
+def test_match_meeting_with_mixed_shape_participants():
+    """Tolerate mixed-shape participants (some strings, some dicts, garbage)."""
+    meeting = {"participants": ["me@mycompany.com", None, {"email": "buyer@blackbaud.com"}, 42]}
+    customer = match_meeting_to_customer(meeting, DOMAINS)
+    assert customer is not None
+    assert customer["customer"] == "Blackbaud"
+
+
+def test_build_transcript_stub_with_string_action_items():
+    """read.ai may return action_items as plain strings."""
+    stub = build_transcript_stub(
+        customer_name="Blackbaud", product="Influitive", title="QBR",
+        date_str="2026-05-06", meeting_id="m1", summary="",
+        action_items=["Follow up with Christine", "Send proposal"],
+    )
+    assert "- Follow up with Christine" in stub.content
+    assert "- Send proposal" in stub.content
