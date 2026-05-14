@@ -5,6 +5,7 @@ import re
 import zipfile
 from datetime import date
 from pathlib import Path
+from .links import path_set_for_links, strip_dangling_wikilinks
 from .models import JobConfig, CustomerRecord, VaultFile, GapItem
 
 _SKILLS_TO_COPY = [
@@ -26,37 +27,61 @@ _TEMPLATE_SECOND_BRAIN = "Khalife Second Brain"
 # real files. They pollute Obsidian's graph as dead links if left as [[…]].
 # We rewrite them to angle-bracket syntax so the skill prose still reads as
 # "replace <CustomerName> with the actual customer" but Obsidian no longer
-# treats them as real wikilinks.
+# treats them as real wikilinks. Coverage extended from Claude Desktop's
+# 2026-05-14 dangling-link audit (C1 category).
 _PLACEHOLDER_WIKILINK_TOKENS = {
-    "CustomerName", "Customer Name", "CustomerNames",
-    "Target", "Targets",
-    "filename", "Filename", "file_name",
-    "YYYY-MM-DD", "YYYY-MM-DD_Meeting_Title", "ISO-Date",
+    # Customer placeholders
+    "CustomerName", "Customer Name", "CustomerNames", "Customer",
+    "Customer A", "Customer B", "Customer C", "Customer X",
+    # Targets / filenames / generic
+    "Target", "Targets", "filename", "Filename", "file_name",
+    "new playbook", "the playbook",
+    # Status / tag values that show up as [[Standard]] in skill examples
+    "Standard", "Platinum", "Active", "At Risk", "Non-HVO", "HVO",
+    # Date slugs
+    "YYYY-MM-DD", "YYYY-MM-DD_Meeting_Title", "YYYY-MM-DD_Renewal_Playbook",
+    "ISO-Date",
+    # Graph-schema placeholders
     "Related Node 1", "Related Node 2", "Related Node N",
     "Related Note", "Related Notes",
+    "Framework Name", "Topic Name", "Concept Name", "Person Name",
     "Topic", "TopicName",
     "ProductLine", "Product",
     "Source", "SourceName",
     "Quote",
 }
+# Regex patterns that catch placeholder families with variable suffixes
+_PLACEHOLDER_PATTERNS = [
+    re.compile(r"^CustomerName\d*$"),                  # CustomerName, CustomerName1, CustomerName2
+    re.compile(r"^Customer\s+[A-Z][a-z]*$"),           # Customer A, Customer Bob
+    re.compile(r"^YYYY-MM-DD"),                        # any YYYY-MM-DD_* slug
+    re.compile(r"^[A-Z][a-z]+\s+Name$"),               # "Framework Name", "Topic Name"
+]
 _PLACEHOLDER_WIKILINK_RE = re.compile(r"\[\[([^\[\]\|\n]+?)(\|[^\[\]\n]+)?\]\]")
 
 
 def _rewrite_placeholder_wikilinks(content: str) -> str:
-    """Rewrite [[Placeholder]] tokens (CustomerName, YYYY-MM-DD, filename, etc.)
-    to <Placeholder> so they don't appear as dangling wikilinks in Obsidian.
+    """Rewrite [[Placeholder]] tokens (CustomerName, YYYY-MM-DD_*, filename,
+    Framework Name, etc.) to <Placeholder> so they don't appear as dangling
+    wikilinks in Obsidian.
 
-    Real wikilinks like [[Books/Atomic-Habits]] are left alone — only the
-    canonical placeholder vocabulary is rewritten."""
+    Real wikilinks like [[Books/Atomic-Habits]] are left alone — only tokens
+    matching the canonical placeholder vocabulary or known placeholder
+    patterns are rewritten."""
     def _repair(match: re.Match) -> str:
         target = match.group(1).strip()
         if target in _PLACEHOLDER_WIKILINK_TOKENS:
             return f"<{target}>"
-        # Also catch ALL-CAPS or `_`-separated tokens that read as placeholders
+        for pat in _PLACEHOLDER_PATTERNS:
+            if pat.match(target):
+                return f"<{target}>"
+        # ALL-CAPS short tokens — placeholder by convention ([[TARGET]] etc.)
         bare = target.split("/", 1)[-1]
         if bare and bare == bare.upper() and "_" not in bare and len(bare) <= 24:
-            # e.g. [[TARGET]], [[CUSTOMER]] — placeholder by convention
             return f"<{bare}>"
+        # Ellipsis-containing or path-ellipsis placeholders ([[Entropy/...]], [[...]])
+        if "..." in target:
+            return f"<{target}>"
         return match.group(0)
     return _PLACEHOLDER_WIKILINK_RE.sub(_repair, content)
 
@@ -179,6 +204,14 @@ def build_vault(
     brain_name = f"{config.user_name}'s Second Brain"
     template = Path(config.entropy_template_path)
 
+    # Build the set of valid wikilink targets — every wiki file path, with and
+    # without the Second-Brain root prefix Obsidian sees. Used to scrub
+    # dangling references from copied skill content (C3/C6 in the audit).
+    wiki_targets: set[str] = set()
+    for vf in wiki_files:
+        for variant in (vf.path, f"{brain_name}/{vf.path}"):
+            wiki_targets.update(path_set_for_links([variant]))
+
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         # Root files
         zf.writestr("CLAUDE.md", generate_claude_md(config))
@@ -228,13 +261,16 @@ def build_vault(
              for g in gap_items], indent=2
         ))
 
-        # Skills (copied from entropy template)
+        # Skills (copied from entropy template, with placeholder rewriting and
+        # a dangling-link sweep against the wiki target set so skill content
+        # never links to a wiki file the generator didn't produce).
         skills_dir = template / "Portfolio Brain" / "_skills"
         for skill_name in _SKILLS_TO_COPY:
             src = skills_dir / skill_name
             if src.exists():
-                zf.writestr(f"Portfolio Brain/_skills/{skill_name}",
-                            _patch_skill_content(src.read_text(), config))
+                patched = _patch_skill_content(src.read_text(), config)
+                cleaned, _ = strip_dangling_wikilinks(patched, wiki_targets)
+                zf.writestr(f"Portfolio Brain/_skills/{skill_name}", cleaned)
 
         # Analytics (copied from entropy template)
         analytics_dir = template / "Portfolio Brain" / "_analytics"

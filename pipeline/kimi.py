@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
+from .links import WIKILINK_RE as _WIKILINK_RE, path_set_for_links, strip_dangling_wikilinks
 from .models import JobConfig, VaultFile, GapItem
 
 logger = logging.getLogger(__name__)
@@ -328,44 +329,15 @@ def _build_input_block(config: JobConfig, ingested_files: list[VaultFile]) -> st
     return block
 
 
-_WIKILINK_RE = re.compile(r"\[\[([^\[\]\|\n]+?)(\|[^\[\]\n]+)?\]\]")
-
-
-def _path_set_for_links(merged: dict[str, str]) -> set[str]:
-    """Set of valid wikilink targets — paths with and without the .md extension,
-    plus the bare basename (Obsidian resolves [[Foo]] to any file named Foo.md)."""
-    targets: set[str] = set()
-    for path in merged:
-        targets.add(path)
-        if path.endswith(".md"):
-            targets.add(path[:-3])
-            targets.add(path.rsplit("/", 1)[-1][:-3])
-    return targets
-
-
 def _strip_dangling_wikilinks(merged: dict[str, str]) -> dict[str, int]:
-    """Replace [[wikilinks]] whose targets don't exist with the visible label
-    formatted as bold text. Mutates merged in place. Returns per-file counts of
-    links stripped (for diagnostics)."""
-    targets = _path_set_for_links(merged)
+    """Sweep dangling wikilinks across all generated files. Mutates merged in
+    place. Returns per-file counts of links replaced (for diagnostics)."""
+    targets = path_set_for_links(merged.keys())
     stripped_counts: dict[str, int] = {}
-
-    def _repair(match: re.Match) -> str:
-        target = match.group(1).strip()
-        alias = match.group(2)
-        # Normalize for lookup: handle anchor fragments like "Foo#Heading"
-        bare = target.split("#", 1)[0]
-        if bare in targets or bare.lstrip("/") in targets:
-            return match.group(0)  # keep — target exists
-        # Dangling: render the visible text as bold instead of a link
-        visible = alias[1:].strip() if alias else target.rsplit("/", 1)[-1]
-        return f"**{visible}**"
-
     for path, content in list(merged.items()):
-        new_content, n = _WIKILINK_RE.subn(_repair, content)
-        replaced = sum(1 for _ in _WIKILINK_RE.finditer(content)) - sum(1 for _ in _WIKILINK_RE.finditer(new_content))
-        if replaced > 0:
-            stripped_counts[path] = replaced
+        new_content, n = strip_dangling_wikilinks(content, targets)
+        if n > 0:
+            stripped_counts[path] = n
             merged[path] = new_content
     return stripped_counts
 
