@@ -1,6 +1,6 @@
 # Analytics Reference Layer
 
-Referenceable definitions, verified queries, and schemas that any Entropy skill can draw on. Separating these from skills means you can load just the metric definition without also loading the SQL, or just the query pattern without the full schema.
+Referenceable definitions, verified queries, and schemas that any Portfolio Brain skill can draw on. Separating these from skills means you can load just the metric definition without also loading the SQL, or just the query pattern without the full schema.
 
 | File | What's Inside | When to Read |
 |------|--------------|-------------|

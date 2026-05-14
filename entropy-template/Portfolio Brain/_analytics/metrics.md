@@ -1,6 +1,6 @@
-# Entropy Metrics Reference
+# Portfolio Brain Metrics Reference
 
-Canonical definitions for every metric used across the Entropy system. When a skill needs to know how a metric is calculated or what a score means, reference this file instead of re-deriving from skill instructions.
+Canonical definitions for every metric used across the Portfolio Brain system. When a skill needs to know how a metric is calculated or what a score means, reference this file instead of re-deriving from skill instructions.
 
 ## Health Score
 
@@ -100,7 +100,7 @@ Values: `Positive`, `Negative`, `Neutral`, `Unknown`
 | GREEN | Healthy — standard cadence |
 | GRAY | Insufficient data for signal |
 
-Fionn's AI signal is independent of Entropy's health score. When they disagree (e.g., Fionn RED but Entropy health 72), investigate — one system may have data the other doesn't.
+Fionn's AI signal is independent of Portfolio Brain's health score. When they disagree (e.g., Fionn RED but Portfolio Brain health 72), investigate — one system may have data the other doesn't.
 
 ---
 

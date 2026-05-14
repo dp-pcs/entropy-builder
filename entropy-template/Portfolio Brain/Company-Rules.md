@@ -235,8 +235,8 @@ When generating any customer-specific playbook, the following checks must pass:
 
 ## Related System Files
 
-- [[Entropy/INDEX]] — Customer Intelligence System entry point
-- [[Entropy/CLAUDE]] — System maintenance schema
+- [[Portfolio Brain/INDEX]] — Customer Intelligence System entry point
+- [[Portfolio Brain/CLAUDE]] — System maintenance schema
 - [[Customer-Intelligence-MOC]] — Framework-to-customer mapping
 - [[Jay-Profile]] — Calibration profile for recommendations
 

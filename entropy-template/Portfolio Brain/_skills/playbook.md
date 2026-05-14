@@ -1,13 +1,13 @@
-# Entropy Skill: Playbook Generation
+# Portfolio Brain Skill: Playbook Generation
 
 Load this file before generating any customer playbook, win-back strategy, expansion plan, or renewal scenario. Also load when recording prediction outcomes.
 
 ## Pre-Read Checklist (mandatory before generating)
 
-1. `Entropy/Company-Rules.md` — pricing, contract terms, compliance checklist
-2. `Entropy/_Prediction_Ledger.md` — calibrate scenario probabilities from historical patterns
-3. `Khalife Second Brain/MOCs/Customer-Intelligence-MOC.md` — map vault frameworks to this customer's situation (lives outside Entropy)
-4. `Khalife Second Brain/Jay-Profile.md` — calibrate coaching notes to Jay's psychological profile (lives outside Entropy)
+1. `Portfolio Brain/Company-Rules.md` — pricing, contract terms, compliance checklist
+2. `Portfolio Brain/_Prediction_Ledger.md` — calibrate scenario probabilities from historical patterns
+3. `Khalife Second Brain/MOCs/Customer-Intelligence-MOC.md` — map vault frameworks to this customer's situation (lives outside Portfolio Brain)
+4. `Khalife Second Brain/Jay-Profile.md` — calibrate coaching notes to Jay's psychological profile (lives outside Portfolio Brain)
 5. The customer's `_intelligence_summary.md` — current state, contacts, health, graph connections
 
 **Sequence:** Company-Rules → Prediction Ledger → Customer Data → Playbook Generation.
@@ -99,6 +99,62 @@ Only include sections when real data supports them. Never shoehorn components fo
 - **Black Swan Hunt** — Hidden factors that could redefine the engagement. Include when genuine unknowns exist (post-acquisition, stakeholder shifts, competitive threats). Skip for straightforward situations.
 - **MEDDICC Qualification** — Full scoring table. Include for complex, multi-stakeholder, or unqualified deals. Skip for straightforward renewals.
 
+## Playbook Execution Tracking
+
+A playbook is a phased strategy. Once generated, the system must track which phase is active, whether phase exit criteria are met, and when to escalate or switch scenarios. Without this, playbooks are fire-and-forget documents.
+
+### Execution State Section
+
+When Jay selects a scenario and begins execution, add a `## Playbook Execution` section to the customer's `_intelligence_summary.md`:
+
+```markdown
+## Playbook Execution
+
+**Active Playbook:** [[YYYY-MM-DD_Renewal_Playbook]]
+**Selected Scenario:** Scenario N: [Name]
+**Current Phase:** Phase [N] — [Phase Name]
+**Phase Started:** YYYY-MM-DD
+**Phase Deadline:** YYYY-MM-DD
+**Status:** On Track | Stalled | Overdue | Exit Criteria Met
+
+### Phase Progress
+| Phase | Status | Started | Deadline | Success Metric | Result |
+|-------|--------|---------|----------|---------------|--------|
+| 1 — [Name] | Complete | 2026-05-01 | 2026-05-07 | [metric from playbook] | [what happened] |
+| 2 — [Name] | Active | 2026-05-08 | 2026-05-22 | [metric from playbook] | — |
+| 3 — [Name] | Pending | — | — | [metric from playbook] | — |
+
+### Exit Criteria Watch
+- [ ] [Exit criterion 1 from playbook] — Not triggered
+- [ ] [Exit criterion 2 from playbook] — Not triggered
+- [ ] [Scenario switch trigger] — Not triggered
+```
+
+### How Execution State Gets Updated
+
+| Event | Update |
+|-------|--------|
+| **Jay selects a scenario** | Create the Execution section. Set Phase 1 as Active. Pull success metrics and exit criteria from the playbook. |
+| **Debrief after a customer meeting** | The debrief skill (Step 7: Playbook Alignment Check) updates phase status based on what happened in the meeting. If success metrics were met, advance to next phase. If exit criteria triggered, flag for scenario switch. |
+| **Weekly sweep** | Check all accounts with active Playbook Execution sections. Flag: phases past their deadline, exit criteria that may have been triggered by new data (emails, tickets), stalled phases (no activity since phase started). |
+| **Daily scan** | If a Tier 2 escalation fires for an account with an active playbook, check whether the new signal triggers any exit criteria. |
+| **Jay manually updates** | Jay can advance phases, mark criteria as triggered, or switch scenarios. |
+
+### Alerts
+
+| Condition | Alert |
+|-----------|-------|
+| Phase deadline passed with no progress | 🟡 "Playbook Phase [N] overdue for [Customer] — started [date], deadline was [date]" |
+| Exit criterion triggered | 🔴 "Exit criterion triggered for [Customer]: [criterion]. Consider switching to [alternative scenario]." |
+| Playbook active for 2x the total planned timeline with no outcome | 🟡 "Playbook for [Customer] has been active [N] days against a [M]-day plan. Review or close." |
+| All phases complete, no outcome recorded | 🟡 "Playbook execution complete for [Customer] but no Outcome file exists. Record the result." |
+
+### Rules
+
+- Only one playbook can be "Active" per customer at a time. If a new playbook is generated, the old one's execution state is archived (Status → "Superseded by [[new playbook]]").
+- Execution state lives in `_intelligence_summary.md`, not in the playbook file itself. The playbook is the strategy document (never modified). The intelligence summary tracks the live state.
+- When an outcome is recorded (via the Prediction Feedback Loop below), clear the Playbook Execution section from the intelligence summary. The outcome file is the permanent record.
+
 ## Prediction Feedback Loop
 
 ### Outcome Files
@@ -146,7 +202,7 @@ result: renewed | churned | downgraded | expanded | pending
 
 ### Prediction Ledger
 
-**File:** `Entropy/_Prediction_Ledger.md` — aggregates all prediction-vs-outcome records.
+**File:** `Portfolio Brain/_Prediction_Ledger.md` — aggregates all prediction-vs-outcome records.
 
 **Structure:**
 ```markdown
@@ -178,8 +234,11 @@ result: renewed | churned | downgraded | expanded | pending
 2. Jay selects and executes a scenario.
 3. Jay reports what happened.
 4. Agent creates Outcome file in customer folder.
-5. Agent updates Prediction Ledger.
+5. Agent updates Prediction Ledger — Outcome Log, Pattern Library, AND Signal Combination Registry.
 6. Future playbooks MUST read the Ledger first and cite specific patterns when they influence predictions.
+
+**Signal-informed probability modeling:**
+Before setting scenario probabilities, build this customer's signal profile (per the Prediction Ledger's "How to Build Signal Profiles" section) and check the Signal Combination Registry. If a matching profile exists at Medium+ confidence, use its observed rate as the baseline. If not, use the playbook's analytical estimate — but note that it's uncalibrated.
 
 ## Second Brain Integration
 

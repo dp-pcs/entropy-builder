@@ -1,4 +1,4 @@
-# Entropy Skill: Competitive Intelligence
+# Portfolio Brain Skill: Competitive Intelligence
 
 Load this file when a competitor is mentioned in an email, transcript, or Jira ticket; when a renewal has competitive pressure; when doing win/loss analysis; or during quarterly landscape reviews as part of monthly enrichment.
 
@@ -73,6 +73,80 @@ Escalation tiers determine what action to take when competitive signals appear.
 
 When escalating to playbook generation, include the full Competitive Signals history for that customer so the playbook can address the specific competitive angle.
 
+## Competitor Hub Nodes
+
+Competitive intelligence is stored per-account in intelligence summaries (the `## Competitive Signals` table). But cross-portfolio competitive patterns require an aggregated view. Competitor hub nodes in `_nodes/Competitors/` provide this — just like Pain Point nodes aggregate customer issues across the portfolio.
+
+### Node Structure
+
+Each competitor with 2+ mentions across the portfolio gets a hub node at `_nodes/Competitors/[Competitor Name].md`:
+
+```yaml
+---
+type: node
+node_type: competitor
+title: "Qualtrics"
+customer_count: 0
+signal_count: 0
+wins: 0
+losses: 0
+last_signal: "2026-05-11"
+---
+```
+
+```markdown
+# [Competitor Name]
+
+[One paragraph: what this competitor offers, which of Jay's products they threaten, and why customers evaluate them.]
+
+## Products Threatened
+
+- [[Tivian]] — [why customers compare, what the feature gap or value gap is]
+
+## Connected Customers
+
+Accounts where this competitor has been mentioned, sorted by risk level:
+
+### Active Evaluations (High Risk)
+- [[CustomerName]] — [date, context, risk level, current status]
+
+### Past Mentions (Medium/Low Risk)
+- [[CustomerName]] — [date, context, resolution if any]
+
+## Positioning That Works
+
+What has successfully defended against this competitor in past encounters:
+- [Approach] — [which customer, what happened, outcome]
+
+## Positioning That Failed
+
+- [Approach] — [which customer, what happened, why it didn't work]
+
+## Related Dimensions
+
+- [[Product Sentiment - Negative]] — customers unhappy with the product are more likely to evaluate
+- [[Contract & Renewal Friction]] — pricing disputes often trigger competitive evaluation
+- [Other relevant pain point or sentiment nodes]
+```
+
+### When to Create / Update Nodes
+
+| Event | Action |
+|-------|--------|
+| **Tier 2 competitive signal detected** | Check if a node exists for this competitor. If yes, add the customer to Connected Customers. If no and this is the 2nd+ mention across the portfolio, create the node. |
+| **Outcome recorded (churn or renewal)** | If the Competitive Signals table had an entry for this account, update the competitor node: increment wins/losses, add to Positioning That Works or Failed. |
+| **Monthly enrichment** | Refresh `customer_count`, `signal_count`, `wins`, `losses` from actuals. Update `last_signal` date. |
+| **Quarterly landscape review** | Review all competitor nodes. Archive nodes with no signals in 6+ months (move to `_nodes/Competitors/_archive/`). |
+
+### Cross-Portfolio Queries Enabled
+
+With competitor nodes in the graph, these queries become trivial:
+
+- "Which customers are currently evaluating Qualtrics?" → Read `_nodes/Competitors/Qualtrics.md` → Active Evaluations section
+- "What positioning worked against Medallia?" → Read `_nodes/Competitors/Medallia.md` → Positioning That Works section
+- "Is competitive pressure increasing for Tivian?" → Scan all competitor nodes with `[[Tivian]]` in Products Threatened, compare signal_count trends
+- "When I generate a playbook for a customer evaluating [Competitor], what's worked before?" → The playbook skill can read the competitor node for empirical positioning data
+
 ## Quarterly Landscape Summary
 
 Generated as a section within the monthly `Portfolio_Pattern_Report.md` (not a standalone file). Run during monthly enrichment alongside the pattern report from `_skills/enrichment.md`.
@@ -114,6 +188,6 @@ Generated as a section within the monthly `Portfolio_Pattern_Report.md` (not a s
 1. **Never trash-talk competitors** in email drafts, playbooks, or any customer-facing content. Focus on Tivian/Influitive/Lyris/QuickSilver value, not competitor weaknesses.
 2. **No custom pricing to match competitors** unless the account is >$100K ARR and CEO-approved. Check [[Company-Rules]] before recommending any pricing response to competitive pressure.
 3. **Scope is Jay's 4 products only** — Tivian, Influitive, Lyris, QuickSilver. Do not track competitive intelligence for team portfolio products (ACRM, Artemis, Bonzai, etc.).
-4. **No standalone competitive report files** — competitive data lives in customer intelligence summaries (per-account signals) and the monthly pattern report (portfolio-level landscape). This follows the same "no loose files at Entropy root" principle from `CLAUDE.md`.
+4. **No standalone competitive report files** — competitive data lives in customer intelligence summaries (per-account signals) and the monthly pattern report (portfolio-level landscape). This follows the same "no loose files at Portfolio Brain root" principle from `CLAUDE.md`.
 5. **New competitor names** not in the Known Competitors table should be logged exactly as mentioned, then added to the table during the next monthly enrichment after verification.
 6. **Historical signals are never deleted** — they form the competitive timeline for the account. Old signals with resolved context can be moved to a `### Resolved Competitive Signals` sub-section if the table grows beyond 15 rows.

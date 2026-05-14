@@ -1,4 +1,4 @@
-# Entropy Skill: Portfolio Segmentation
+# Portfolio Brain Skill: Portfolio Segmentation
 
 Load this file when running portfolio reviews, resource planning, answering "which accounts need attention?", or during monthly enrichment. Goes beyond health score to cluster all 300 customers by behavior pattern for actionable resource allocation.
 

@@ -1,4 +1,4 @@
-# Entropy Skill: Customer Triage
+# Portfolio Brain Skill: Customer Triage
 
 Fast situational snapshot for a single customer. Use when Jay asks "what's going on with [Customer]?", "give me a quick read on [Customer]", "status of [Customer]", or any question about a specific account that doesn't require a full playbook.
 
@@ -54,6 +54,32 @@ Read the `## Health History` table. Compare the most recent score to the score f
 - Difference ≥ +10 → "improving"
 - Difference ≤ -10 → "declining"
 - Otherwise → "stable"
+
+## Framework Surfacing
+
+After completing the triage read, check the customer's current situation against these trigger patterns. If a match is found, append a `FRAMEWORK:` line to the triage output with the relevant vault framework and a one-sentence explanation of why it applies. This turns the triage from "here's what's happening" into "here's what's happening and here's a play."
+
+Load `Khalife Second Brain/MOCs/Customer-Intelligence-MOC.md` ONLY when a trigger matches — not on every triage. The point is speed; framework surfacing is a bonus, not a bottleneck.
+
+| Trigger Pattern | Framework to Surface | When It Applies |
+|----------------|---------------------|----------------|
+| Support Sentiment Negative + HVO | [[Service-Recovery-Paradox]] | Support failure on a high-value account — recovery IS the retention strategy |
+| Cancellation intent ≥ 0.5 + active relationship | [[Accusation-Audit]] → [[Tactical Empathy]] | Defuse before it escalates. Label the frustration before proposing solutions |
+| Health declining + renewal within 120d | [[Pre-Mortems]] | Imagine the churn. Work backward. What intervention prevents it? |
+| Gone silent 30d+ | [[Accusation-Audit]] | Acknowledge the gap before re-engaging. Don't pretend everything is fine |
+| Floor Price + Negative renewal sentiment | [[Diminishing-Returns]] | Is fighting for this revenue worth the effort? Check the math before acting |
+| Expansion signals detected | [[The Expansion Sale]] → [[QBS Ladder]] | Customer is showing growth intent. Climb from status to implication to vision questions |
+| Champion stance shifted to At-Risk or Blocker | [[MEDDICC Framework]] | Champion is wobbling. Who's the new Champion? Is there an Economic Buyer path? |
+| Multiple pain points active (3+) | [[Compounding]] | Frustration compounds. Three issues simultaneously create a narrative, not three isolated tickets |
+
+**Output format:** Add to the triage briefing after RECOMMENDATION:
+
+```
+FRAMEWORK:
+[[Framework Name]] — [One sentence: why this framework applies to this specific customer's situation right now.]
+```
+
+If no trigger matches, omit the FRAMEWORK section entirely. Don't force it.
 
 ## When to Escalate Beyond Triage
 

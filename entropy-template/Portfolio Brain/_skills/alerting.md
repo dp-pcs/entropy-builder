@@ -1,4 +1,4 @@
-# Entropy Skill: Proactive Alerting & Expansion Intelligence
+# Portfolio Brain Skill: Proactive Alerting & Expansion Intelligence
 
 Load this file when running alert scans (weekly sweep step 3), evaluating expansion signals, or triaging accounts for attention.
 

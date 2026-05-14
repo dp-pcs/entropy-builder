@@ -1,10 +1,10 @@
-# Entropy Skill: Portfolio Dashboard, Action Tracker & Decision Logging
+# Portfolio Brain Skill: Portfolio Dashboard, Action Tracker & Decision Logging
 
 Load this file when generating the weekly Portfolio Dashboard, refreshing the Action Tracker, or processing decisions from transcripts/emails.
 
 ## Portfolio Dashboard
 
-**File:** `Entropy/_Portfolio_Dashboard.md`
+**File:** `Portfolio Brain/_Portfolio_Dashboard.md`
 **Generated:** Every Monday (weekly sweep).
 **Purpose:** Single-page triage view. Answers "where should Jay focus this week?"
 
@@ -64,7 +64,7 @@ Overwritten each week (not versioned — always reflects current state).
 
 ## Action Tracker
 
-**File:** `Entropy/_Action_Tracker.md`
+**File:** `Portfolio Brain/_Action_Tracker.md`
 **Refreshed:** Every Monday (weekly sweep).
 **Purpose:** Every open commitment Jay has made. Answers "what did I promise, and is any overdue?"
 

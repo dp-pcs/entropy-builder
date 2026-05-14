@@ -1,4 +1,4 @@
-# Entropy Skill: External Enrichment, Pattern Reports & Monthly Health Check
+# Portfolio Brain Skill: External Enrichment, Pattern Reports & Monthly Health Check
 
 Load this file when running the monthly enrichment (1st of month), generating pattern reports, enriching firmographic data, or running the monthly health check.
 
@@ -54,7 +54,7 @@ tech_stack: [Salesforce, SAP, Azure]
 
 ## Cross-Customer Pattern Report
 
-**File:** `Entropy/YYYY-MM_Portfolio_Pattern_Report.md`
+**File:** `Portfolio Brain/YYYY-MM_Portfolio_Pattern_Report.md`
 **Generated:** Monthly (1st of month).
 
 ### What It Analyzes

@@ -1,4 +1,4 @@
-# Entropy Skill: Renewal Countdown
+# Portfolio Brain Skill: Renewal Countdown
 
 Load this file when running weekly sweeps (to check renewal proximity), reviewing the renewal pipeline, or when Jay asks about upcoming renewals. This skill ensures readiness BEFORE a playbook is needed — it is the early warning system that triggers preparation, not the preparation itself.
 

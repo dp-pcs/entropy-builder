@@ -1,4 +1,4 @@
-# Entropy Skill: Health Scoring & Contact Intelligence
+# Portfolio Brain Skill: Health Scoring & Contact Intelligence
 
 Load this file when recalculating health scores, updating contact tables, scoring cancellation intent, or investigating health drift.
 
@@ -56,6 +56,49 @@ Every intelligence summary includes an append-only `## Health History` table. **
 - Append a new row every recalculation.
 - `Trigger` column: what caused it (daily scan, weekly sweep, manual update).
 - If table exceeds 52 rows (1 year), archive rows older than 12 months to `Health-Archive-YYYY.md` in the customer folder.
+
+## Health Trajectory Analysis
+
+The Health History table stores the data. This section defines how to extract trajectory — the direction, velocity, and acceleration of change.
+
+### Computing Trajectory
+
+When recalculating health or running a triage, compute these from the Health History table:
+
+| Metric | Formula | What It Tells You |
+|--------|---------|-------------------|
+| **Direction** | Compare latest score to score 4 weeks ago | Improving, declining, or stable (±10 threshold) |
+| **Velocity** | `(latest_score - score_8_weeks_ago) / weeks_elapsed` | Points gained or lost per week. A customer losing 3 pts/week is very different from one losing 0.5 pts/week |
+| **Acceleration** | Compare velocity over last 4 weeks to velocity over the 4 weeks before that | Is the decline speeding up, slowing down, or steady? Accelerating decline is the most dangerous signal |
+| **Projected Score** | `current_score + (velocity × weeks_to_renewal)` | Where this account lands if nothing changes. Compare to band thresholds (70 for Good, 40 for Critical) |
+
+### Trajectory Alerts
+
+These are distinct from the existing Health Drift alert (≥10 point single-event change). Trajectory alerts catch slow bleeds that never trigger a single-event drift.
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| **Slow Bleed** | Velocity ≤ -1.5 pts/week sustained over 4+ weeks, even if no single drop ≥10 | 🟡 Medium |
+| **Accelerating Decline** | Current velocity is ≥2× the velocity from the prior 4-week window | 🔴 High |
+| **Trajectory to Critical** | Projected score at renewal date falls below 40 | 🔴 High (HVO) / 🟡 Medium (non-HVO) |
+| **Recovery Stall** | Account was improving (velocity > 0) but velocity has dropped to ≤0 for 3+ weeks | 🟡 Medium |
+| **Silent Plateau** | Score has been within ±3 points for 8+ weeks AND no engagement in 30+ days | 🟡 Medium — stability without engagement is disengagement in disguise |
+
+### When to Compute
+
+- **Triage:** Always compute Direction. Compute Velocity and Projected Score if Health History has ≥4 rows.
+- **Weekly sweep:** Compute all metrics for every account with ≥4 history rows. Surface trajectory alerts in the Portfolio Dashboard.
+- **Playbook generation:** Compute all metrics and include in the Situation Assessment. Projected Score at renewal is critical context for scenario modeling.
+- **Monthly enrichment:** Flag accounts where Projected Score at renewal crosses a band threshold (Green→Yellow, Yellow→Red).
+
+### Minimum Data Requirements
+
+- Direction: 2+ rows spanning 2+ weeks
+- Velocity: 3+ rows spanning 4+ weeks
+- Acceleration: 6+ rows spanning 8+ weeks
+- Projected Score: Velocity + known renewal_date
+
+If insufficient data exists, say so. Don't compute from noise.
 
 ## Contact Intelligence
 

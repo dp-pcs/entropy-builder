@@ -1,4 +1,4 @@
-# Entropy Skill: Pressure Test
+# Portfolio Brain Skill: Pressure Test
 
 Load this file before any high-stakes customer outreach on accounts with ARR > $50K. Also useful for win-back attempts, difficult renewals, and any account where the outcome is uncertain and the contact has a known behavioral profile.
 
@@ -18,7 +18,7 @@ Simulate the customer's most likely pushback before Jay engages. The goal is to 
 1. The customer's `_intelligence_summary.md` — full context
 2. `## Contact Personas` section (if populated) — behavioral profile of the contact you're engaging
 3. Any relevant playbook — the approach being tested
-4. `Entropy/Company-Rules.md` — what you can and can't offer
+4. `Portfolio Brain/Company-Rules.md` — what you can and can't offer
 5. Recent emails/transcripts — the customer's actual words and tone
 
 ## Simulation Protocol

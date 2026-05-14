@@ -144,6 +144,54 @@ After extraction and deduplication:
 
 ---
 
+## Weighted Priority Score
+
+The Action Tracker tracks all commitments (Jay's, team members', customers'). But the **priority view** focuses on what Jay can directly act on — his own commitments, sorted by what matters most.
+
+### Formula
+
+```
+priority = days_overdue × (arr / 100,000) × hvo_multiplier × renewal_proximity
+```
+
+| Factor | Values |
+|--------|--------|
+| `days_overdue` | Actual days past due. Items not yet overdue use negative values (due in 3 days = -3), so upcoming items sort below overdue ones. Minimum floor: 1 for any overdue item. |
+| `arr / 100,000` | Normalizes ARR to a multiplier. $250K ARR = 2.5×, $50K = 0.5×, $15K = 0.15×. |
+| `hvo_multiplier` | 2.0 if account status contains "HVO". 1.0 otherwise. |
+| `renewal_proximity` | 2.0 if renewal within 90 days. 1.5 if within 180 days. 1.0 otherwise. |
+
+### Priority Tiers
+
+| Tier | Score Range | Meaning |
+|------|------------|---------|
+| P1 | ≥ 50 | Drop everything. These are high-value, significantly overdue, renewal-adjacent. |
+| P2 | 10–49 | Handle this week. Important but not emergency. |
+| P3 | 1–9 | Handle within 2 weeks. Lower value or not yet critically overdue. |
+| P4 | < 1 | Monitor. Either not overdue yet or very low ARR. |
+
+### Daily View Integration
+
+When generating `_Daily_View.md`, include a **Top 5 Priority Actions** section immediately after Broken Promises:
+
+```markdown
+## Top 5 Priority Actions (Jay-Owned)
+
+| # | Customer | Action | Priority | Due | Why It Matters |
+|---|----------|--------|----------|-----|----------------|
+| 1 | [[Customer]] | [action] | P1 (score: 125) | X days overdue | $250K HVO, renewal in 60d |
+| 2 | [[Customer]] | [action] | P1 (score: 80) | X days overdue | $150K, negative renewal sentiment |
+| 3 | ... | | | | |
+```
+
+**Rules:**
+- Only include Jay-owned items in the Top 5. Team-owned items stay in the full tracker but aren't in the priority view — Jay can't directly execute on someone else's task.
+- If fewer than 5 Jay-owned items are overdue, fill remaining slots with Jay's highest-priority upcoming items (due soonest + highest score).
+- Recalculate priority scores every weekly sweep and every time the Action Tracker is refreshed.
+- The full Action Tracker still tracks all owners. The priority view is a *lens* on Jay's items, not a replacement.
+
+---
+
 ## Output Format
 
 After running extraction (whether post-debrief or weekly sweep), output a summary:

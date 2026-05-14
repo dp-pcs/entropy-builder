@@ -12,7 +12,7 @@ triggers:
 
 # Vault Lint Skill
 
-Checks Entropy's structural integrity across 8 categories. Run monthly alongside enrichment, or on-demand when the vault feels messy.
+Checks Portfolio Brain's structural integrity across 8 categories. Run monthly alongside enrichment, or on-demand when the vault feels messy.
 
 ---
 
@@ -34,7 +34,7 @@ Checks Entropy's structural integrity across 8 categories. Run monthly alongside
 **What:** Files with zero incoming wikilinks — nothing points to them.
 
 **How to check:**
-1. List all `.md` files in Entropy/
+1. List all `.md` files in Portfolio Brain/
 2. For each file, search the entire vault for `[[filename]]` (without extension)
 3. If no other file links to it, it's an orphan
 
@@ -59,7 +59,7 @@ Checks Entropy's structural integrity across 8 categories. Run monthly alongside
 3. Dead link = target file not found
 
 **Common causes:**
-- Customer renamed in Notion but not in Entropy
+- Customer renamed in Notion but not in Portfolio Brain
 - Typo in wikilink
 - Hub node referenced but never created
 - File deleted but links to it remain

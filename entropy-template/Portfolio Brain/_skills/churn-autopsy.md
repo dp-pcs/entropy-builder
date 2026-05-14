@@ -1,4 +1,4 @@
-# Entropy Skill: Churn Autopsy
+# Portfolio Brain Skill: Churn Autopsy
 
 Structured post-mortem when a customer churns. Load this file when a customer's status changes to Churned, a cancellation is confirmed, or a loss is recorded. Extracts learnings from every churn event and feeds them into the Prediction Ledger to improve future forecasting.
 
@@ -72,7 +72,7 @@ Also note any signals that were NOT in the standard categories — novel warning
 
 ### Step 3 — System Failure Check
 
-Evaluate whether Entropy's detection and response mechanisms worked. Answer each question:
+Evaluate whether Portfolio Brain's detection and response mechanisms worked. Answer each question:
 
 | Check | Answer | Notes |
 |-------|--------|-------|
@@ -105,7 +105,7 @@ Then classify:
 
 - **Preventable** — A timely CSM intervention (outreach, escalation, pricing adjustment, executive engagement) could realistically have changed the outcome. The signals were there; the response was missing or late.
 - **Partially preventable** — Intervention might have delayed or reduced the churn (e.g., could have negotiated a downgrade instead of full cancellation), but the underlying driver was strong.
-- **Deterministic** — No CSM action would have changed this. The cause was outside Entropy's influence: EoE product, corporate M&A, org-wide vendor consolidation, hard budget elimination.
+- **Deterministic** — No CSM action would have changed this. The cause was outside Portfolio Brain's influence: EoE product, corporate M&A, org-wide vendor consolidation, hard budget elimination.
 
 ### Step 5 — Pattern Classification
 
@@ -140,6 +140,9 @@ Update `_Prediction_Ledger.md` with the churn outcome:
 - If this churn confirms an existing pattern, add "(N=X, [customer list])" to strengthen it
 - If this churn reveals a NEW pattern, add it with "(N=1, [customer])" and flag as low confidence
 - If this churn contradicts an existing pattern, note the contradiction
+
+**4. Update Signal Combination Registry:**
+Build the account's signal profile at the time of churn using the 6 dimensions defined in the Prediction Ledger's "How to Build Signal Profiles" section (health trajectory, sentiment combination, status tags, engagement state, intervention state, financial profile). Check the Registry for a matching combination. If one exists, add this account and update the observed rate. If no match exists and the combination is meaningful, create a new entry.
 
 ## Autopsy Output
 
@@ -196,7 +199,7 @@ preventable: yes | no | partial
 
 ## Key Learning
 
-[One paragraph: the single most important thing Entropy should learn from this churn. What changes — in alerting thresholds, health scoring, playbook triggers, or engagement cadence — would help catch this pattern earlier next time?]
+[One paragraph: the single most important thing Portfolio Brain should learn from this churn. What changes — in alerting thresholds, health scoring, playbook triggers, or engagement cadence — would help catch this pattern earlier next time?]
 
 ## Prediction Ledger Updates
 

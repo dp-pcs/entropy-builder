@@ -2,8 +2,8 @@
   "schema_version": 1,
   "source_repo": "jaykhalife/entropy",
   "source_branch": "main",
-  "last_synced_commit": "8efff942b9d32c5b6a5b327ab05cef37ecddd0c9",
-  "last_synced_at": "2026-05-14T05:35:00Z",
+  "last_synced_commit": "5f940a6e3ec5231bebf6bf02c7442b311b6c4155",
+  "last_synced_at": "2026-05-14T14:45:28Z",
   "tracked_paths": [
     "Portfolio Brain/_skills/",
     "Portfolio Brain/_analytics/",
@@ -14,67 +14,67 @@
   ],
   "files": {
     "Portfolio Brain/_skills/alerting.md": {
-      "source_sha256": "d9ce0083ad0d17923f3103d7640c9a7e6e765c2fb2eb3fa840cc60a5365f300a",
+      "source_sha256": "e7762ab627f7e0102be2e1a7b674e3addcf55052be63456ff4b091feeb37c379",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/alerting.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/churn-autopsy.md": {
-      "source_sha256": "54946a6418293a4f2c63af03070c54785ac8468521cfd5abcf8cbe0fe993814f",
+      "source_sha256": "f4af991c4f719a1a9189c1650aa11dfe4d64ecad2a07a806a98f7ff0d257c86e",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/churn-autopsy.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/commitment-extraction.md": {
-      "source_sha256": "8dc3b716d088965104e66a615907dac720304ddaa0d77d988bdb52e66d59895f",
+      "source_sha256": "1624d4da02cb4feac38fb8e64570d4a0a06b4afb733a2535f1eca41a251da555",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/commitment-extraction.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/competitive-intel.md": {
-      "source_sha256": "a2b1d9732e43d758c2d52dbbc0a06fe671efd882bb2808a240b4a3145f1bcacb",
+      "source_sha256": "f4e2c1661d2991e19c9fa519593988010d0f6d3a600247e4603660dff9652aa1",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/competitive-intel.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/dashboard.md": {
-      "source_sha256": "a3aa310136e098d470e65ca4880657ddf96ec255e978a632adb6697c9a02cbfd",
+      "source_sha256": "b5bb753ff7322a89673ae5e31a94e554a78a24b0a1e1e18ab3b0453182c91ec6",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/dashboard.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/debrief.md": {
-      "source_sha256": "0c3774f33b2c4b3e808f85b29bf9448807c17c71bddb30892b9259a39b6f26bf",
+      "source_sha256": "635b705acbb0d2282ff83bc19586c85b4707dc18a1adf622512cf2934d2c5828",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/debrief.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/email-draft.md": {
-      "source_sha256": "a4370d16c775ba49c7176fdd1a7771ca73b7ef00ec9913b0bc4beeb812f27077",
+      "source_sha256": "15955a5da569aa00676b3741f744a9a26bd625e39e8b05c827cca7fdd9070d71",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/email-draft.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/enrichment.md": {
-      "source_sha256": "3279e9f8017de603a6db7ad7c065302cc39750f2811e196104e3287f5ab5c302",
+      "source_sha256": "389e31d3574015c3f9cf39f91747166a00282638f1067d749d18d71a1f7e07a4",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/enrichment.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/health.md": {
-      "source_sha256": "768f57acc2fa48623356ec37648850ab0dfc43f5e5bd395dcb8cf3eacb6bc87d",
+      "source_sha256": "e88c7960ed10dea7875ac1072ac5ede7cdf5539305622090638e7432d880ff82",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/health.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/ingestion.md": {
-      "source_sha256": "405b401b28e52e3d9617a55cd114463674c9aa527481446baf3e06bb79d8045a",
+      "source_sha256": "c87ce41f92aff32db3eefe235d6ec833a2e9d9ab9bd5b2b0298330595aa451e5",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/ingestion.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/lint.md": {
-      "source_sha256": "b7805f49a8ac50f2975a16999b588eb0c296037656b175492a9b1a9c5bb8df62",
+      "source_sha256": "4fbadfe4ca7518c207d7640e2ccd59b7d56d9d362f5586b95fb1f15772ec005e",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/lint.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
@@ -86,19 +86,19 @@
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/playbook.md": {
-      "source_sha256": "d2f1995ab772340aa94b88eb6b6ac0676e7a2ae9a4adff297ef5ce962aad76a2",
+      "source_sha256": "dff3b13a3b5fd6131f686c64185ce7e50b244f8d017b7c154e064eb2c83335ba",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/playbook.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/pressure-test.md": {
-      "source_sha256": "39fcb048fa4daa72808ad4103c7f885c1dd8fc839b203999add51c598ed13c1f",
+      "source_sha256": "bc8e2278f51dac3821a44490147a5e88bda98941c9ba98d429e9960a6b6f1e73",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/pressure-test.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/renewal-countdown.md": {
-      "source_sha256": "81829a8a7bca3a04efff8205f664e97e9d1c706d97da4ec205b411d716c6add8",
+      "source_sha256": "98cea30ddacdcab16cccd253ac27ca18af0913d77b06860d62c53fbb379c5774",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/renewal-countdown.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
@@ -110,47 +110,54 @@
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/segmentation.md": {
-      "source_sha256": "908c5c0a53d621c9239daae828147a52e7725fb88ada108c58608949ea63c26d",
+      "source_sha256": "844e8af15cb62707fa465cc1007d237f25556d3f1d54c9c23ea8f7e364299291",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/segmentation.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_skills/triage.md": {
-      "source_sha256": "33e7437e8140c446cfe422f0ed4ee3eb1e920d6775f7a7118608a123443d4351",
+      "source_sha256": "85e78d67fffdf82317a6bd7d997254fe43bf92032c56be740a483946c144df12",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_skills/triage.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_analytics/CLAUDE.md": {
-      "source_sha256": "59cc3270f61718592209c7c5455e2ee28b80d1bb4847294680803e3c5beb28b2",
+      "source_sha256": "b7de6edb3b098df4c4ddcf3d09cf25463a4ce3cbe566bc3fe18a6b1ec4f53024",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/CLAUDE.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_analytics/metrics.md": {
-      "source_sha256": "2bf6db2d9540c5a7a76016e708702590742795da9abe9abfd83e389e82031fa1",
+      "source_sha256": "003e508a22d068e66fc6e3c8f13177656754cf386949468985e4e03f641d5446",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/metrics.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_analytics/queries.md": {
-      "source_sha256": "bd4a71d1679ef5e0f63149732211507e118736bef6e1260474d22edeaf241bd0",
+      "source_sha256": "b457657940c1d7b3e1b6623f1056fb8ab7a4a052c3b62aece0a4e06a41d743fb",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/queries.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/_analytics/schemas.md": {
-      "source_sha256": "2d12fe66e703a9deafb7dcc9dd010e0704fd33edc974f137b2d40928aea3bbcb",
+      "source_sha256": "736e023be1494c206f6386e8fa7a6fd7688d02b0745e6c5de2f90bca768f3d4f",
       "dest_path_in_template": "entropy-template/Portfolio Brain/_analytics/schemas.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     },
     "Portfolio Brain/Company-Rules.md": {
-      "source_sha256": "726a74b0a7fda79d761e2c6799196155ca7d463535f7586ce8182cf9732503ce",
+      "source_sha256": "78e9d0ff7aebbead0160abaed7ee117096273e0c3f44238859d4917c2184a96d",
       "dest_path_in_template": "entropy-template/Portfolio Brain/Company-Rules.md",
       "first_seen_version": "bootstrap",
       "last_updated_version": "bootstrap"
     }
   },
-  "ingested_changes": []
+  "ingested_changes": [
+    {
+      "version": "1.1.0",
+      "ingested_at": "2026-05-14T14:45:28Z",
+      "source_commit": "5f940a6e3ec5231bebf6bf02c7442b311b6c4155",
+      "note": "Pre-recorded during re-bootstrap; entry is for an excluded file (changelog-discipline.md) and produced no template changes."
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-# Entropy Skill: Post-Meeting Debrief
+# Portfolio Brain Skill: Post-Meeting Debrief
 
 Turns a meeting transcript into a full intelligence update in one pass. Use after any customer meeting — when a Read.ai transcript lands, when Jay says "debrief [Customer]", "process the [Customer] meeting", or "what came out of the call with [Customer]".
 
@@ -13,7 +13,7 @@ Turns a meeting transcript into a full intelligence update in one pass. Use afte
 
 Do NOT load: Company-Rules, Prediction Ledger, vault MOCs, other customers, pattern reports. Those are for playbook generation, not debriefing.
 
-## Debrief Process (6 Steps)
+## Debrief Process (8 Steps)
 
 ### Step 1: Participant Classification
 
@@ -72,7 +72,33 @@ For each customer participant, determine if any Key Contacts fields should chang
 - **Last Engaged**: Update to the meeting date.
 - **New relationship dynamics**: Did contacts reference each other in ways that reveal reporting lines, alliances, or tensions?
 
-### Step 5: Playbook Alignment Check
+### Step 5: Framework Surfacing
+
+Based on what the transcript revealed, check whether a vault framework applies to the customer's current situation. This turns the debrief from "here's what happened" into "here's what happened and here's a lens for what to do next."
+
+Load `Khalife Second Brain/MOCs/Customer-Intelligence-MOC.md` ONLY when a trigger matches — not on every debrief.
+
+| Signal From Transcript | Framework to Surface |
+|-----------------------|---------------------|
+| Customer expressed frustration with support quality | [[Crucial Conversations]] — STATE method to rebuild trust |
+| Customer mentioned evaluating competitors or received an RFP | [[MEDDICC Framework]] — identify Champion and Economic Buyer immediately |
+| Customer pushed back on pricing or questioned ROI | [[Diagnostic-Funnel]] — diagnose why they perceive low value before defending the price |
+| Customer described a support failure that was well-recovered | [[Service-Recovery-Paradox]] — this is a loyalty-building moment, lean into it |
+| New executive joined the call or was referenced | [[Essential Account Planning]] — map the power structure shift |
+| Customer's tone was adversarial or escalatory | [[Tactical Empathy]] — label the emotion before addressing the substance |
+| Customer raised expansion topics unprompted | [[The Expansion Sale]] — they opened the door, now use "Why Stay" / "Why Grow" framing |
+| Low engagement admitted by customer | [[Flip the Funnel]] → [[Behavior-Design]] — reactivation before retention |
+
+**Output format:** Add to the debrief output after PLAYBOOK STATUS:
+
+```
+FRAMEWORK:
+[[Framework Name]] — [One sentence: what this framework says about the situation revealed in this meeting.]
+```
+
+If no trigger matches, omit the section. If multiple match, surface the most strategically important one (max 2).
+
+### Step 7: Playbook Alignment Check
 
 If an active playbook exists, compare what happened in the meeting against the playbook's expectations:
 
@@ -81,7 +107,7 @@ If an active playbook exists, compare what happened in the meeting against the p
 - **Deviation — negative**: Something the playbook didn't anticipate (e.g., new blocker emerged, budget was cut, champion was less supportive than expected). Check if any exit criteria have been triggered.
 - **No playbook**: Skip this step. If the meeting reveals concerning signals, recommend generating one.
 
-### Step 6: Intelligence Summary Update
+### Step 8: Intelligence Summary Update
 
 Apply all findings to the customer's `_intelligence_summary.md`:
 

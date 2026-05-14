@@ -1,6 +1,6 @@
-# Entropy File Schemas
+# Portfolio Brain File Schemas
 
-Canonical YAML frontmatter schemas for every file type in Entropy. When creating or validating files, reference these schemas to ensure consistency across all 300+ customers.
+Canonical YAML frontmatter schemas for every file type in Portfolio Brain. When creating or validating files, reference these schemas to ensure consistency across all 300+ customers.
 
 ## Intelligence Summary Schema
 
@@ -168,7 +168,7 @@ date: 2026-04-18
 ```yaml
 ---
 type: node
-node_type: status | product | sub-product | sentiment | pain-point | contract
+node_type: status | product | sub-product | sentiment | pain-point | contract | competitor
 title: "Node Title"
 customer_count: 45
 ---

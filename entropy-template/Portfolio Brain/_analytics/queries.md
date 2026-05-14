@@ -1,4 +1,4 @@
-# Entropy Verified Query Patterns
+# Portfolio Brain Verified Query Patterns
 
 Tested MCP tool calls and query patterns for pulling customer data. Use these instead of guessing parameter names or query syntax — they've been validated against real data.
 
@@ -167,7 +167,7 @@ Google Drive auto-converts PPTX → Google Slides, XLSX → Google Sheets, DOCX 
 
 ## Domain Mapping
 
-**File:** `Entropy/_data/customer_domains.json`
+**File:** `Portfolio Brain/_data/customer_domains.json`
 **446 domains** mapped to customer names and products.
 
 **Reseller domains (multi-customer):**

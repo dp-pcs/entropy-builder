@@ -10,7 +10,7 @@ triggers:
   - playbook action step requiring outbound email
 ---
 
-# Entropy Skill: Email Drafting
+# Portfolio Brain Skill: Email Drafting
 
 Generates ready-to-send email drafts from Action Tracker commitments, customer intelligence, and vault frameworks — calibrated to Jay's communication style and the recipient's expectations. Use when Jay says "draft email for [Customer]", "help me write the [action item] email", "write the follow-up to [Customer]", or when a playbook action step calls for outbound email.
 
@@ -172,6 +172,25 @@ Pattern:
 
 Never lead with price. Never mention discounts in the first outreach.
 
+## Framework-Informed Drafting
+
+Before writing, check whether a vault framework should shape the email's approach. This isn't about quoting frameworks to the customer — it's about using them to select the right tone, structure, and persuasion strategy.
+
+Load `Khalife Second Brain/MOCs/Customer-Intelligence-MOC.md` ONLY when a trigger matches.
+
+| Email Scenario | Framework | How It Shapes the Draft |
+|---------------|-----------|------------------------|
+| Re-engagement after silence | [[Accusation-Audit]] | Open by labeling what the customer might be thinking. Don't pretend the gap didn't happen. |
+| Following up on a support failure | [[Service-Recovery-Paradox]] | The recovery email should be better than if the failure never happened. Over-deliver. |
+| Pricing/renewal email to price-sensitive contact | [[Framing-Effect]] + [[Anchoring]] | Frame the renewal as value retained, not cost incurred. Set the anchor before they do. |
+| Win-back outreach | [[Endowment-Effect]] + [[Loss-Aversion]] | Remind them what they lost by leaving — workflows, data, integrations — not what they'll gain by returning. |
+| Email to an analytical decision-maker | [[Ethos-Logos-Pathos]] | Lead with data (logos), establish credibility (ethos), connect emotionally only at the close (pathos). |
+| Email to a relationship-driven contact | [[Three Pillars of Charisma]] | Lead with warmth, not power. Personal reference before business content. |
+| Delivering bad news to HVO | [[Crucial Conversations]] | STATE method: Share facts, Tell your story, Ask for their path. Own it, then open dialogue. |
+| Expansion upsell | [[The Expansion Sale]] | "Why Stay" → "Why Grow" framing. Ground in current success before proposing more. |
+
+When a framework is applied, note it in the Sources line of the draft output so Jay knows what lens was used.
+
 ## Output Format
 
 Every draft must follow this structure:
@@ -189,6 +208,52 @@ Every draft must follow this structure:
 
 *Sources: [wikilink to intelligence summary, playbook, prior emails, or Action Tracker entries referenced during drafting]*
 ```
+
+## Communication Effectiveness Log
+
+Lightweight tracking of what communication approaches produce responses. Not A/B testing — just a log that builds pattern recognition over time. Even N=5 of "Accusation Audit worked on analytical personas" is useful context for the next draft.
+
+### When to Log
+
+After drafting an email, the system records the approach. After a response arrives (detected during daily scan or debrief), the outcome is logged. This happens in the customer's `_intelligence_summary.md` under a `## Communication Log` section:
+
+```markdown
+## Communication Log
+
+| Date | Recipient | Framework Used | Scenario | Response? | Response Time | Notes |
+|------|-----------|---------------|----------|-----------|---------------|-------|
+| 2026-05-10 | Fiona Smith | Accusation Audit | Re-engagement | Yes | 1 day | Acknowledged the gap, agreed to call |
+| 2026-04-28 | John Doe | Ethos-Logos-Pathos | Renewal prep | No | — | Followed up 7 days later, still no response |
+```
+
+### Fields
+
+| Field | What to Record |
+|-------|---------------|
+| **Date** | Date the email was sent |
+| **Recipient** | Contact name (links to Key Contacts table for persona data) |
+| **Framework Used** | Which vault framework shaped the draft (from the Framework-Informed Drafting section above). "None" if no framework was applied |
+| **Scenario** | Email type: re-engagement, follow-up, renewal-prep, escalation-response, good-news, bad-news, expansion-pitch |
+| **Response?** | Yes / No / Partial (replied but didn't address the CTA) |
+| **Response Time** | Days to response. Only filled when Response = Yes |
+| **Notes** | One line: what the response said or why there was no response (if known) |
+
+### How It Feeds Back
+
+**During email drafting:** Before writing, check the Communication Log for the recipient. If prior entries exist:
+- What framework produced a response from this contact? Use it again.
+- What framework got no response? Try a different approach.
+- What's their average response time? Set follow-up expectations accordingly.
+
+**During monthly enrichment:** Scan Communication Logs across the portfolio. If a pattern emerges at N=5+:
+- Log it in the Prediction Ledger under a new `### Communication Patterns` section
+- Example: "Accusation Audit re-engagement emails produce responses 80% of the time (4/5) for contacts with Decision Style = relationship-driven. Direct/data-driven approaches produce responses 40% (2/5) for the same persona type."
+
+### Rules
+- Only log emails drafted through this skill (where the framework choice was deliberate). Don't retroactively log routine emails.
+- Keep the table to the last 20 entries per customer. Archive older rows if needed.
+- Response detection happens naturally during daily scans — when a customer reply is ingested for an account that has a recent Communication Log entry, update the Response and Response Time fields.
+- Don't over-index on small samples. Communication patterns are directional signal, not prescriptive rules. Always note the N-count when citing a pattern.
 
 ## Rules
 

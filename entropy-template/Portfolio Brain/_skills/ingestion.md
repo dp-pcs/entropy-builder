@@ -1,4 +1,4 @@
-# Entropy Skill: Data Ingestion & Tiered Processing
+# Portfolio Brain Skill: Data Ingestion & Tiered Processing
 
 Load this file before running daily inbox scans, weekly sweeps, or monthly enrichment. Contains the tiered processing model, cadence definitions, and checkpoint patterns.
 
@@ -83,7 +83,7 @@ Tier 1 default, Tier 2 when triggered. Lightweight triage-and-route. Does NOT sy
 5. Update engagement + cadence scores. Append Health History only if score changed. Trigger: "Daily scan".
 6. Lightweight alert check: health drift (≥10 pts), cancellation intent (from Tier 2), new escalation contacts.
 
-**Output:** Brief summary: items ingested by source, customers updated, Tier 2 escalations, alerts triggered. Output this as conversational text only — **do NOT create a standalone scan report file.** Scan results are persisted via intelligence summary updates, `_hot_cache.md`, and dashboard/alert updates. No `*_Daily_Scan_*`, `*_Scan_Report*`, or similar files should ever be written to the Entropy root or any other location.
+**Output:** Brief summary: items ingested by source, customers updated, Tier 2 escalations, alerts triggered. Output this as conversational text only — **do NOT create a standalone scan report file.** Scan results are persisted via intelligence summary updates, `_hot_cache.md`, and dashboard/alert updates. No `*_Daily_Scan_*`, `*_Scan_Report*`, or similar files should ever be written to the Portfolio Brain root or any other location.
 
 ### Checkpoint Pattern (for daily scans)
 After processing every 50 items (or every source transition), output a progress checkpoint:
@@ -119,7 +119,7 @@ Runs alongside the monthly pattern report. Adds external context. Load `_skills/
 2. **Company news scan (HVO + At-Risk only)**: Web search for M&A, layoffs, funding, leadership changes, competitor wins, public reviews.
 3. **Firmographic enrichment**: For customers missing data — size, industry, HQ, tech stack.
 4. **Enrichment summary**: Log findings in `## External Intelligence`.
-5. **Pattern report**: Generate `Entropy/YYYY-MM_Portfolio_Pattern_Report.md`.
+5. **Pattern report**: Generate `Portfolio Brain/YYYY-MM_Portfolio_Pattern_Report.md`.
 6. **Health check**: 10-point monthly check (load `_skills/enrichment.md` for checklist).
 
 7. **System Improvement Review (Flywheel)**: The automation-to-learning flywheel — each automation frees time to improve the system, which enables more automation. Review:
@@ -138,16 +138,16 @@ CHECKPOINT: Step [N]/7 complete — [step name]. [key findings]. Proceeding to s
 
 ## Folder Scoping
 
-**Jay's portfolio is exactly 4 products:** `Tivian/`, `Influitive/`, `Lyris/`, `QuickSilver/`. All other product folders at the Entropy root (`ACRM`, `Artemis`, `Aurea Platform`, `Bonzai`, `Jigsaw Platform`, `Messageone`, `Onyx`, `Pivotal`, `Saratoga`, `Stratifyd`) belong to the wider team and must be excluded from all scans, sweeps, and enrichment.
+**Jay's portfolio is exactly 4 products:** `Tivian/`, `Influitive/`, `Lyris/`, `QuickSilver/`. All other product folders at the Portfolio Brain root (`ACRM`, `Artemis`, `Aurea Platform`, `Bonzai`, `Jigsaw Platform`, `Messageone`, `Onyx`, `Pivotal`, `Saratoga`, `Stratifyd`) belong to the wider team and must be excluded from all scans, sweeps, and enrichment.
 
 When a task targets a specific customer, scope file access:
-- **Single customer query** → Only mount `Entropy/[Product]/[CustomerName]/` + the intelligence summary. Don't scan the whole portfolio.
+- **Single customer query** → Only mount `Portfolio Brain/[Product]/[CustomerName]/` + the intelligence summary. Don't scan the whole portfolio.
 - **Portfolio-wide task** → Use frontmatter-only reads first. Only open full files when triggered. Only traverse the 4 portfolio products.
 - **Cross-customer comparison** → Load only the specific customers being compared, not all 300.
 
 ## Customer Domain Mapping
 
-**File:** `Entropy/_data/customer_domains.json` — maps 446 email domains to customer names and products. Use for matching emails and meeting participants. Reseller domains (shi.com, carahsoft.com, etc.) map to multiple customers — use subject/body for disambiguation.
+**File:** `Portfolio Brain/_data/customer_domains.json` — maps 446 email domains to customer names and products. Use for matching emails and meeting participants. Reseller domains (shi.com, carahsoft.com, etc.) map to multiple customers — use subject/body for disambiguation.
 
 ## Data Sources
 
