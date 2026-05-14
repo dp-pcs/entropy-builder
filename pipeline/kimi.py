@@ -13,21 +13,30 @@ from .models import JobConfig, VaultFile, GapItem
 
 logger = logging.getLogger(__name__)
 
-_CODE_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*)```", re.DOTALL)
+_CODE_FENCE_RE = re.compile(r"```(?:json|ndjson)?\s*([\s\S]*)```", re.DOTALL)
+_OPEN_FENCE_RE = re.compile(r"^```(?:json|ndjson)?\s*", re.DOTALL)
 
 
 def _strip_fence(raw: str) -> str:
-    """Strip markdown code fences from a model response."""
+    """Strip markdown code fences from a model response.
+
+    Handles both fully-fenced (```...```) and truncated responses where the
+    opening fence exists but the closing fence was cut off by max_tokens.
+    """
     text = raw.strip()
-    if text.startswith("```"):
-        m = _CODE_FENCE_RE.search(text)
-        if m:
-            text = m.group(1).strip()
-    return text
+    if not text.startswith("```"):
+        return text
+    m = _CODE_FENCE_RE.search(text)
+    if m:
+        return m.group(1).strip()
+    # Unclosed fence (truncated response) — strip only the opening fence
+    return _OPEN_FENCE_RE.sub("", text, count=1).strip()
 
 _TFY_URL = "https://tfy.promptlens.trilogy.com/v1/chat/completions"
 _TFY_MODEL = "claude-group/claude-sonnet-4-6"
-_TFY_MAX_TOKENS = 32000
+# Sonnet 4.6 supports 64K output; 32K was insufficient — chunks consistently
+# hit finish=length mid-content, dropping the entire wiki silently. See bd-trn.
+_TFY_MAX_TOKENS = 64000
 
 _FW_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 _FW_MODEL = "accounts/fireworks/models/deepseek-v4-pro"
@@ -40,7 +49,15 @@ _PASS1_SYSTEM = """You are building a personal knowledge wiki ("Second Brain") f
 
 Given their interview answers and uploaded notes, generate structured Obsidian markdown files.
 
-CRITICAL: Your entire response must be a single raw JSON object. No preamble, no explanation, no markdown prose — just the JSON object starting with { and ending with }. Keys are relative file paths, values are complete file contents.
+CRITICAL OUTPUT FORMAT — newline-delimited JSON (NDJSON):
+- Emit one complete JSON object per line: {"path": "<relative path>", "content": "<full file contents>"}
+- No preamble, no commentary, no markdown code fences — just JSON objects, one per line.
+- Newlines inside content MUST be JSON-escaped as \\n.
+- Each line is independent — finish each file before starting the next.
+
+Example (two files):
+{"path": "User-Profile.md", "content": "---\\ntype: profile\\n---\\n\\n# Profile\\n\\nContent here."}
+{"path": "Books/Atomic Habits.md", "content": "---\\ntype: book\\n---\\n\\n# Atomic Habits"}
 
 Generate these files (skip a type only if there is truly no relevant content):
 - "User-Profile.md": psychological calibration profile — thinking style, strengths, blind spots, growth edges, AI behavior rules
@@ -161,18 +178,50 @@ def _call_kimi(
     raise last_exc
 
 
-def _parse_wiki_response_with_meta(raw: str) -> tuple[list[VaultFile], dict]:
-    """Parse model output and return (files, diagnostics).
+def _parse_ndjson(text: str) -> tuple[list[VaultFile], dict]:
+    """Parse NDJSON wiki output: one JSON object per line, each {path, content}.
 
-    diagnostics keys:
-      extraction_path: "direct" | "extract_object" | "failed"
-      error: stringified parse error from the last failing attempt (None on success)
-      values_dropped_non_str: count of dict values that weren't strings (silently filtered)
+    Truncation-resilient — a cut-off final line is discarded but earlier
+    files are recovered. Returns (files, meta) with line_count/lines_failed/
+    values_dropped_non_str counters.
     """
-    meta: dict = {"extraction_path": "failed", "error": None, "values_dropped_non_str": 0}
-    text = _strip_fence(raw.strip())
+    meta = {"extraction_path": "ndjson", "error": None,
+            "line_count": 0, "lines_failed": 0, "values_dropped_non_str": 0}
+    files: list[VaultFile] = []
     last_error: str | None = None
-    for label, attempt in (("direct", text), ("extract_object", _extract_json_object(text))):
+    for line in text.split("\n"):
+        line = line.strip().rstrip(",")  # tolerate trailing commas from old JSON-envelope habit
+        if not line or not line.startswith("{"):
+            continue
+        meta["line_count"] += 1
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError as e:
+            meta["lines_failed"] += 1
+            last_error = f"line {meta['line_count']}: {type(e).__name__}: {e}"
+            continue
+        if not isinstance(obj, dict):
+            meta["values_dropped_non_str"] += 1
+            continue
+        path = obj.get("path")
+        content = obj.get("content")
+        if isinstance(path, str) and isinstance(content, str):
+            files.append(VaultFile(path=path, content=content))
+        else:
+            meta["values_dropped_non_str"] += 1
+    if not files:
+        meta["extraction_path"] = "failed"
+        meta["error"] = last_error or "no valid NDJSON lines found"
+    return files, meta
+
+
+def _parse_json_envelope(text: str) -> tuple[list[VaultFile], dict]:
+    """Legacy single-JSON-object parser. Kept as a fallback if the model
+    regresses to emitting one big object instead of NDJSON."""
+    meta = {"extraction_path": "failed", "error": None, "values_dropped_non_str": 0}
+    last_error: str | None = None
+    for label, attempt in (("envelope_direct", text),
+                           ("envelope_extract_object", _extract_json_object(text))):
         if attempt is None:
             continue
         try:
@@ -183,9 +232,28 @@ def _parse_wiki_response_with_meta(raw: str) -> tuple[list[VaultFile], dict]:
         if isinstance(data, dict):
             meta["extraction_path"] = label
             meta["values_dropped_non_str"] = sum(1 for v in data.values() if not isinstance(v, str))
-            return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)], meta
+            return ([VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)], meta)
         last_error = f"TypeError: top-level JSON is {type(data).__name__}, not dict"
     meta["error"] = last_error
+    return [], meta
+
+
+def _parse_wiki_response_with_meta(raw: str) -> tuple[list[VaultFile], dict]:
+    """Parse model output and return (files, diagnostics).
+
+    Tries NDJSON first (current prompt format), falls back to the legacy
+    JSON-envelope parser. Diagnostics report which path succeeded and any
+    silent drops along the way.
+    """
+    text = _strip_fence(raw.strip())
+    files, meta = _parse_ndjson(text)
+    if files:
+        return files, meta
+    # NDJSON yielded nothing — try the legacy envelope format
+    envelope_files, envelope_meta = _parse_json_envelope(text)
+    if envelope_files:
+        return envelope_files, envelope_meta
+    # Both failed — return the NDJSON diagnostics since that's the current format
     return [], meta
 
 

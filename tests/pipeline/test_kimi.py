@@ -114,7 +114,8 @@ def test_parse_with_meta_reports_success_path():
     raw = json.dumps({"User-Profile.md": "# Profile"})
     files, meta = _parse_wiki_response_with_meta(raw)
     assert len(files) == 1
-    assert meta["extraction_path"] == "direct"
+    # Legacy single-object format → envelope fallback path
+    assert meta["extraction_path"] == "envelope_direct"
     assert meta["error"] is None
     assert meta["values_dropped_non_str"] == 0
 
@@ -130,10 +131,10 @@ def test_parse_with_meta_counts_dropped_non_string_values():
 
 
 def test_generate_wiki_writes_debug_artifacts(mocker, tmp_path):
-    body = json.dumps({
-        "User-Profile.md": "---\ntype: profile\n---\n# Profile",
-        "TRAVERSAL-INDEX.md": "- [[User-Profile]] — profile",
-    })
+    body = (
+        '{"path": "User-Profile.md", "content": "---\\ntype: profile\\n---\\n# Profile"}\n'
+        '{"path": "TRAVERSAL-INDEX.md", "content": "- [[User-Profile]] — profile"}\n'
+    )
     mocker.patch("pipeline.kimi.requests.post",
                  return_value=_mock_sse_response(body, finish_reason="stop"))
 
@@ -146,15 +147,15 @@ def test_generate_wiki_writes_debug_artifacts(mocker, tmp_path):
     art = json.loads(artifacts[0].read_text())
     assert art["chunk_idx"] == 0
     assert art["finish_reason"] == "stop"
-    assert art["parse"]["extraction_path"] == "direct"
+    assert art["parse"]["extraction_path"] == "ndjson"
     assert art["parse"]["files_count"] == 2
     assert "User-Profile.md" in art["parse"]["files"]
     assert art["input_files"] == ["note.md"]
 
 
 def test_generate_wiki_captures_truncated_response(mocker, tmp_path):
-    """When the model hits max_tokens, finish_reason=length and parse fails silently
-    today. Verify the artifact records this so we can spot it offline."""
+    """If the model emits the legacy JSON envelope AND truncates mid-content,
+    the envelope parser fails and we record it as a parse failure."""
     truncated = '{"Books/X.md": "---\\ntype: book\\n---\\n# X"  '  # never closed
     mocker.patch("pipeline.kimi.requests.post",
                  return_value=_mock_sse_response(truncated, finish_reason="length"))
@@ -166,5 +167,64 @@ def test_generate_wiki_captures_truncated_response(mocker, tmp_path):
     art = json.loads((debug_dir / "chunk_00.json").read_text())
     assert art["finish_reason"] == "length"
     assert art["parse"]["extraction_path"] == "failed"
-    assert art["parse"]["error"] is not None
-    assert files == []  # confirms today's silent-drop behavior
+    assert files == []
+
+
+def test_parse_ndjson_basic():
+    raw = (
+        '{"path": "User-Profile.md", "content": "---\\ntype: profile\\n---\\n# P"}\n'
+        '{"path": "Books/Atomic Habits.md", "content": "---\\ntype: book\\n---\\n# AH"}\n'
+    )
+    files, meta = _parse_wiki_response_with_meta(raw)
+    assert len(files) == 2
+    assert meta["extraction_path"] == "ndjson"
+    assert meta["line_count"] == 2
+    assert meta["lines_failed"] == 0
+
+
+def test_parse_ndjson_recovers_when_last_line_truncated():
+    """Critical case: the model hits max_tokens mid-content on the final file.
+    Earlier files must still be recovered."""
+    raw = (
+        '{"path": "User-Profile.md", "content": "# Complete profile"}\n'
+        '{"path": "Books/X.md", "content": "# Complete book"}\n'
+        '{"path": "Books/Y.md", "content": "# Partial book that gets cut off here'
+    )
+    files, meta = _parse_wiki_response_with_meta(raw)
+    assert len(files) == 2
+    assert {f.path for f in files} == {"User-Profile.md", "Books/X.md"}
+    assert meta["lines_failed"] == 1
+
+
+def test_parse_ndjson_strips_unclosed_code_fence():
+    """Truncated response retains the opening ```ndjson but loses the closing
+    fence. Parser must still extract complete lines."""
+    raw = '```ndjson\n{"path": "a.md", "content": "# A"}\n{"path": "b.md", "content": "# B partial'
+    files, _ = _parse_wiki_response_with_meta(raw)
+    assert len(files) == 1
+    assert files[0].path == "a.md"
+
+
+def test_parse_ndjson_falls_back_to_json_envelope():
+    """If the model regresses to emitting the legacy single-object format,
+    the parser should still work."""
+    raw = json.dumps({
+        "User-Profile.md": "# Profile",
+        "Books/X.md": "# Book",
+    })
+    files, meta = _parse_wiki_response_with_meta(raw)
+    assert len(files) == 2
+    assert meta["extraction_path"].startswith("envelope")
+
+
+def test_parse_ndjson_ignores_preamble():
+    """If Sonnet ignores the 'no preamble' rule and adds prose before the JSON,
+    the parser should skip non-JSON lines."""
+    raw = (
+        'Here are the files:\n'
+        '\n'
+        '{"path": "a.md", "content": "# A"}\n'
+        '{"path": "b.md", "content": "# B"}\n'
+    )
+    files, _ = _parse_wiki_response_with_meta(raw)
+    assert len(files) == 2
