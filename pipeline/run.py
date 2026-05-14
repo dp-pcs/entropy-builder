@@ -33,7 +33,14 @@ def main():
     parser.add_argument("--config", required=True, help="Path to config JSON")
     parser.add_argument("--output", default="vault.zip", help="Output ZIP path")
     parser.add_argument("--files", nargs="*", help="Files to ingest (paths)")
+    parser.add_argument(
+        "--debug-dir",
+        help="Dump per-chunk raw responses + parse diagnostics here for offline replay",
+    )
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     cfg_data = json.loads(Path(args.config).read_text())
     cfg = JobConfig(**cfg_data)
@@ -49,7 +56,7 @@ def main():
     print(f"  Ingested {len(ingested)} files")
 
     print("Step 2: Generating wiki (Kimi Pass 1)...")
-    wiki_files = generate_wiki(cfg, ingested)
+    wiki_files = generate_wiki(cfg, ingested, debug_dir=args.debug_dir)
     print(f"  Generated {len(wiki_files)} wiki files")
 
     print("Step 3: Analyzing gaps (Kimi Pass 2)...")

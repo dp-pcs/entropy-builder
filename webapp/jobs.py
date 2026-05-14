@@ -1,5 +1,7 @@
 # webapp/jobs.py
 import json
+import logging
+import os
 import time
 import traceback
 import uuid
@@ -11,6 +13,8 @@ from pipeline import ingest, kimi, notion_pull, gmail_pull, drive_pull, readai_p
 from pipeline.models import JobConfig
 from . import s3
 from .config import settings as _webapp_settings
+
+logger = logging.getLogger(__name__)
 
 _STEPS = ["ingest", "wiki", "gaps", "notion", "gmail", "readai", "assembly"]
 
@@ -138,9 +142,25 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
             eta = int((elapsed / chunk_idx) * chunks_remaining) if chunk_idx else 0
             _update_state(job_id, tokens_total=tokens_total[0], eta_seconds=eta)
 
-        wiki_files = kimi.generate_wiki(config, ingested, on_chunk=_on_wiki_chunk)
+        # When ENTROPY_WIKI_DEBUG=1, dump per-chunk raw responses + parse
+        # diagnostics under a temp dir and upload to S3 for offline replay.
+        # Used to diagnose silent content loss after model changes.
+        wiki_debug_dir: str | None = None
+        if os.environ.get("ENTROPY_WIKI_DEBUG") == "1":
+            wiki_debug_dir = f"/tmp/wiki_debug_{job_id}"
+
+        wiki_files = kimi.generate_wiki(
+            config, ingested, on_chunk=_on_wiki_chunk, debug_dir=wiki_debug_dir,
+        )
         set_current_activity(job_id, None)
         log_activity(job_id, f"Wiki built: {len(wiki_files)} file(s)", kind="info")
+
+        if wiki_debug_dir:
+            try:
+                keys = s3.upload_wiki_debug_artifacts(job_id, wiki_debug_dir)
+                log_activity(job_id, f"Uploaded {len(keys)} wiki debug artifact(s) to S3", kind="info")
+            except Exception:
+                logger.exception("Failed to upload wiki debug artifacts")
 
         # --- Gaps ---
         _update_state(job_id, step="gaps", step_index=2)

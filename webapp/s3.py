@@ -95,6 +95,27 @@ def delete_job(job_id: str) -> None:
             _client().delete_objects(Bucket=settings.s3_bucket, Delete={"Objects": objects})
 
 
+def upload_wiki_debug_artifacts(job_id: str, local_dir: str) -> list[str]:
+    """Upload per-chunk wiki debug artifacts under jobs/{job_id}/wiki_debug/.
+
+    Used by scripts/replay_wiki_parse.py to diagnose silent content loss.
+    Returns the S3 keys uploaded.
+    """
+    from pathlib import Path
+    keys: list[str] = []
+    for path in sorted(Path(local_dir).glob("chunk_*.json")):
+        key = f"jobs/{job_id}/wiki_debug/{path.name}"
+        _client().put_object(
+            Bucket=settings.s3_bucket,
+            Key=key,
+            Body=path.read_bytes(),
+            ContentType="application/json",
+            ServerSideEncryption="AES256",
+        )
+        keys.append(key)
+    return keys
+
+
 def upload_claude_settings(job_id: str, settings_json: str) -> str:
     key = f"jobs/{job_id}/claude_desktop_config.json"
     _client().put_object(

@@ -1,12 +1,17 @@
 # entropy_builder/pipeline/kimi.py
 import json
+import logging
+import os
 import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import requests
 from .models import JobConfig, VaultFile, GapItem
+
+logger = logging.getLogger(__name__)
 
 _CODE_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*)```", re.DOTALL)
 
@@ -82,8 +87,13 @@ def _call_kimi(
     url: str = _FW_URL,
     model: str = _FW_MODEL,
     max_tokens: int = _FW_MAX_TOKENS,
-) -> tuple[str, int]:
-    """Returns (generated_text, total_tokens). Tokens fall back to char-based estimate."""
+) -> tuple[str, int, str | None]:
+    """Returns (generated_text, total_tokens, finish_reason).
+
+    finish_reason is the last non-null value reported by the API (e.g. "stop",
+    "length"). None means the stream ended without an explicit reason — usually
+    a network truncation, which also produces broken JSON.
+    """
     payload: dict = {
         "model": model,
         "max_tokens": max_tokens,
@@ -116,6 +126,7 @@ def _call_kimi(
             resp.raise_for_status()
             parts = []
             usage_tokens = 0
+            finish_reason: str | None = None
             for raw_line in resp.iter_lines():
                 if not raw_line:
                     continue
@@ -132,11 +143,15 @@ def _call_kimi(
                     if usage.get("total_tokens"):
                         usage_tokens = usage["total_tokens"]
                     continue
-                delta = choices[0]["delta"].get("content") or ""
+                choice = choices[0]
+                delta = (choice.get("delta") or {}).get("content") or ""
                 parts.append(delta)
+                fr = choice.get("finish_reason")
+                if fr:
+                    finish_reason = fr
             result = "".join(parts)
             tokens = usage_tokens or ((len(user_content) + len(result)) // 4)
-            return result, tokens
+            return result, tokens, finish_reason
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code < 500 and e.response.status_code != 429:
                 raise  # don't retry 4xx except 429
@@ -146,18 +161,37 @@ def _call_kimi(
     raise last_exc
 
 
-def _parse_wiki_response(raw: str) -> list[VaultFile]:
+def _parse_wiki_response_with_meta(raw: str) -> tuple[list[VaultFile], dict]:
+    """Parse model output and return (files, diagnostics).
+
+    diagnostics keys:
+      extraction_path: "direct" | "extract_object" | "failed"
+      error: stringified parse error from the last failing attempt (None on success)
+      values_dropped_non_str: count of dict values that weren't strings (silently filtered)
+    """
+    meta: dict = {"extraction_path": "failed", "error": None, "values_dropped_non_str": 0}
     text = _strip_fence(raw.strip())
-    for attempt in (text, _extract_json_object(text)):
+    last_error: str | None = None
+    for label, attempt in (("direct", text), ("extract_object", _extract_json_object(text))):
         if attempt is None:
             continue
         try:
             data = json.loads(attempt)
-            if isinstance(data, dict):
-                return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)]
-        except (json.JSONDecodeError, AttributeError):
-            pass
-    return []
+        except (json.JSONDecodeError, AttributeError) as e:
+            last_error = f"{type(e).__name__}: {e}"
+            continue
+        if isinstance(data, dict):
+            meta["extraction_path"] = label
+            meta["values_dropped_non_str"] = sum(1 for v in data.values() if not isinstance(v, str))
+            return [VaultFile(path=k, content=v) for k, v in data.items() if isinstance(v, str)], meta
+        last_error = f"TypeError: top-level JSON is {type(data).__name__}, not dict"
+    meta["error"] = last_error
+    return [], meta
+
+
+def _parse_wiki_response(raw: str) -> list[VaultFile]:
+    files, _ = _parse_wiki_response_with_meta(raw)
+    return files
 
 
 def _extract_json_object(text: str) -> str | None:
@@ -187,15 +221,27 @@ def generate_wiki(
     config: JobConfig,
     ingested_files: list[VaultFile],
     on_chunk=None,
+    debug_dir: str | None = None,
 ) -> list[VaultFile]:
     """Pass 1: generate wiki from interview answers + ingested content.
 
     Always splits files across MAX_PARALLEL_CHUNKS concurrent calls regardless
     of total content size. on_chunk(chunk_index, total_chunks, tokens) is called
     after each call completes.
+
+    When debug_dir is set (or env var ENTROPY_WIKI_DEBUG_DIR), writes
+    chunk_{i}.json per chunk containing the input, raw response, finish_reason,
+    and parse diagnostics. Used by scripts/replay_wiki_parse.py to iterate on
+    parser logic without re-spending model tokens.
     """
     api_key, url, model, max_tokens = _backend(config)
     interview_block = f"INTERVIEW ANSWERS:\n{json.dumps(config.interview_answers, indent=2)}\n\n"
+
+    debug_dir = debug_dir or os.environ.get("ENTROPY_WIKI_DEBUG_DIR") or None
+    debug_path: Path | None = None
+    if debug_dir:
+        debug_path = Path(debug_dir)
+        debug_path.mkdir(parents=True, exist_ok=True)
 
     num_chunks = min(max(len(ingested_files), 1), MAX_PARALLEL_CHUNKS)
 
@@ -204,35 +250,72 @@ def generate_wiki(
     for i, f in enumerate(ingested_files):
         groups[i % num_chunks].append(f)
 
-    chunks = []
+    chunks: list[tuple[str, list[str]]] = []  # (chunk_content, file_paths_in_chunk)
     for group in groups:
         content = interview_block
         for f in group:
             content += f"FILE: {f.path}\n{f.content[:2000]}\n\n"
-        chunks.append(content)
+        chunks.append((content, [f.path for f in group]))
 
     merged: dict[str, str] = {}
     lock = threading.Lock()
     completed = [0]
 
-    def _process(i: int, chunk: str) -> tuple[int, str, int]:
-        raw, tokens = _call_kimi(api_key, _PASS1_SYSTEM, chunk, url=url, model=model, max_tokens=max_tokens)
-        return i, raw, tokens
+    def _process(i: int, chunk: str) -> tuple[int, str, int, str | None]:
+        raw, tokens, finish_reason = _call_kimi(
+            api_key, _PASS1_SYSTEM, chunk, url=url, model=model, max_tokens=max_tokens
+        )
+        return i, raw, tokens, finish_reason
 
     with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
-        futures = {pool.submit(_process, i, chunk): i for i, chunk in enumerate(chunks)}
+        futures = {pool.submit(_process, i, chunk): i for i, (chunk, _) in enumerate(chunks)}
         for future in as_completed(futures):
-            i, raw, tokens = future.result()
+            i, raw, tokens, finish_reason = future.result()
+            chunk_content, chunk_file_paths = chunks[i]
+            files, parse_meta = _parse_wiki_response_with_meta(raw)
+
+            logger.info(
+                "[wiki] chunk %d/%d tokens=%d raw_chars=%d finish=%s parse=%s files=%d "
+                "dropped_non_str=%d input_files=%d error=%s",
+                i + 1, len(chunks), tokens, len(raw), finish_reason or "none",
+                parse_meta["extraction_path"], len(files),
+                parse_meta["values_dropped_non_str"], len(chunk_file_paths),
+                parse_meta["error"] or "none",
+            )
+
+            if debug_path:
+                artifact = {
+                    "chunk_idx": i,
+                    "total_chunks": len(chunks),
+                    "input_chars": len(chunk_content),
+                    "input_files": chunk_file_paths,
+                    "raw_response": raw,
+                    "raw_chars": len(raw),
+                    "tokens": tokens,
+                    "finish_reason": finish_reason,
+                    "parse": {
+                        "files_count": len(files),
+                        "files": [vf.path for vf in files],
+                        "extraction_path": parse_meta["extraction_path"],
+                        "error": parse_meta["error"],
+                        "values_dropped_non_str": parse_meta["values_dropped_non_str"],
+                    },
+                }
+                (debug_path / f"chunk_{i:02d}.json").write_text(json.dumps(artifact, indent=2))
+
             with lock:
                 completed[0] += 1
                 if on_chunk:
                     on_chunk(completed[0], len(chunks), tokens)
-                for vf in _parse_wiki_response(raw):
+                for vf in files:
                     if vf.path in merged and vf.path != "TRAVERSAL-INDEX.md":
                         merged[vf.path] += "\n\n" + vf.content
                     else:
                         merged[vf.path] = vf.content
 
+    logger.info(
+        "[wiki] merge complete: %d unique files from %d chunks", len(merged), len(chunks)
+    )
     return [VaultFile(path=k, content=v) for k, v in merged.items()]
 
 
@@ -240,7 +323,7 @@ def analyze_gaps(config: JobConfig, wiki_files: list[VaultFile]) -> list[GapItem
     """Pass 2: identify gaps in the generated wiki."""
     api_key, url, model, max_tokens = _backend(config)
     file_list = "\n".join(f"- {f.path}" for f in wiki_files)
-    raw, _ = _call_kimi(
+    raw, _, _ = _call_kimi(
         api_key,
         _PASS2_SYSTEM,
         f"GENERATED FILES:\n{file_list}",
