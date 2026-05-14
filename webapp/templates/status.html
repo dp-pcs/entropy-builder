@@ -206,8 +206,15 @@
 
       <p class="text-xs text-ink/45 text-center font-mono uppercase tracking-[0.12em]">Bookmark this page · Download link valid for 7 days</p>
 
-      <!-- Delete vault -->
-      <div class="mt-6 pt-5 border-t border-ink/10 text-center">
+      <!-- Rebuild + Delete -->
+      <div class="mt-6 pt-5 border-t border-ink/10 text-center space-y-3">
+        <div id="rebuild-section" class="hidden">
+          <button id="rebuild-btn" onclick="rebuildVault()"
+            class="text-xs text-ink/55 hover:text-clay transition font-mono uppercase tracking-[0.12em]">
+            Rebuild this vault with the same inputs →
+          </button>
+          <p class="text-[10px] text-ink/35 mt-1 font-mono">No re-upload, no re-paste. Same config, fresh run.</p>
+        </div>
         <button id="delete-btn" onclick="confirmDelete()"
           class="text-xs text-ink/35 hover:text-clay transition font-mono uppercase tracking-[0.12em]">
           Delete this vault and all data
@@ -303,6 +310,28 @@ async function deleteVault() {
     if (r.ok) { location.href = '/'; }
     else { alert('Delete failed — please try again.'); btn.textContent = 'Yes, delete everything'; btn.disabled = false; }
   } catch(e) { alert('Delete failed — please try again.'); btn.textContent = 'Yes, delete everything'; btn.disabled = false; }
+}
+
+async function rebuildVault() {
+  var btn = document.getElementById('rebuild-btn');
+  var original = btn.textContent;
+  btn.textContent = 'Starting rebuild…';
+  btn.disabled = true;
+  try {
+    var r = await fetch('/api/job/' + JOB_ID + '/rebuild', {method: 'POST'});
+    if (r.ok) {
+      var data = await r.json();
+      location.href = '/job/' + data.job_id;
+      return;
+    }
+    var msg = 'Rebuild failed — please try again.';
+    try { var err = await r.json(); if (err.detail) msg = err.detail; } catch(e) {}
+    alert(msg);
+  } catch(e) {
+    alert('Rebuild failed — please try again.');
+  }
+  btn.textContent = original;
+  btn.disabled = false;
 }
 
 var STEP_LABELS = [
@@ -642,6 +671,7 @@ async function pollStatus() {
       renderStepsList(state.total_steps, 'complete');
       document.getElementById('progress-bar').style.width = '100%';
       document.getElementById('progress-pct').textContent = '100%';
+      document.getElementById('rebuild-section').classList.remove('hidden');
     }
 
     if (state.status === 'error') {
@@ -650,6 +680,7 @@ async function pollStatus() {
       document.getElementById('graph-status').textContent = 'Halted';
       document.getElementById('error-section').classList.remove('hidden');
       document.getElementById('error-message').textContent = state.error || 'Unknown error';
+      document.getElementById('rebuild-section').classList.remove('hidden');
     }
   } catch(e) { /* network hiccup — retry next tick */ }
 }

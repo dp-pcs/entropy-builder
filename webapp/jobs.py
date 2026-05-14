@@ -73,6 +73,7 @@ def set_current_activity(
 def create_job(config_dict: dict, s3_keys: list[str], owner_sub: str = "") -> str:
     job_id = str(uuid.uuid4())
     s3.write_job_config(job_id, config_dict)
+    s3.write_job_inputs(job_id, s3_keys)
     state = {
         "job_id": job_id,
         "status": "pending",

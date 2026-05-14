@@ -122,6 +122,41 @@ def create_app() -> FastAPI:
                 pass
         return {"ok": True}
 
+    @app.post("/api/job/{job_id}/rebuild")
+    def rebuild_job(job_id: str, user=Depends(_current_user)):
+        """Re-run a previous job with the same config + uploaded inputs.
+
+        Used when iterating on vault output without forcing the user to re-paste
+        interview answers or re-upload files. Mints a fresh job_id; the original
+        job's artifacts are preserved.
+        """
+        from . import jobs
+        if not _UUID_RE.match(job_id):
+            raise HTTPException(status_code=400, detail="Invalid job_id")
+        state = s3.read_job_state(job_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _check_job_access(state, user, html=False)
+        config_dict = s3.read_job_config(job_id)
+        if config_dict is None:
+            raise HTTPException(status_code=410, detail="Original config no longer available")
+        s3_keys = s3.read_job_inputs(job_id)
+        if s3_keys is None:
+            # Pre-rebuild-feature jobs didn't persist s3_keys; the user has to
+            # rerun the wizard for those.
+            raise HTTPException(
+                status_code=409,
+                detail="This job predates rebuild support. Start a new build from the wizard.",
+            )
+        owner_sub = state.get("owner_sub", "")
+        new_job_id = jobs.create_job(config_dict, s3_keys, owner_sub=owner_sub)
+        if owner_sub:
+            try:
+                db.record_job(owner_sub, new_job_id)
+            except Exception:
+                pass
+        return {"job_id": new_job_id}
+
     @app.post("/api/logout")
     def logout(response: Response, entropy_auth: Optional[str] = Cookie(default=None, alias=_AUTH_COOKIE)):
         if entropy_auth:

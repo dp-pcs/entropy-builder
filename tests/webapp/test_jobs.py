@@ -4,6 +4,59 @@ import pytest
 from pipeline.models import JobConfig, CustomerRecord, VaultFile, GapItem
 
 
+def test_create_job_persists_s3_keys(mocker):
+    """create_job must write inputs.json so /rebuild can recover s3_keys later."""
+    from webapp import jobs
+    write_config = mocker.patch("webapp.jobs.s3.write_job_config")
+    write_inputs = mocker.patch("webapp.jobs.s3.write_job_inputs")
+    mocker.patch("webapp.jobs.s3.write_job_state")
+    mocker.patch("webapp.jobs.boto3.client")
+
+    s3_keys = ["uploads/sess-1/a.pdf", "uploads/sess-1/b.zip"]
+    job_id = jobs.create_job(_make_config(), s3_keys, owner_sub="user-123")
+
+    write_config.assert_called_once()
+    write_inputs.assert_called_once_with(job_id, s3_keys)
+
+
+def test_rebuild_job_endpoint(mocker, client):
+    """POST /api/job/{id}/rebuild mints a new job_id reusing the original
+    config + s3_keys, without re-uploading or re-pasting interview answers."""
+    original_job = "00000000-0000-0000-0000-000000000001"
+    config_dict = _make_config()
+    s3_keys = ["uploads/sess-orig/notes.zip"]
+
+    mocker.patch("webapp.main.s3.read_job_state",
+                 return_value={"owner_sub": "", "status": "complete"})
+    mocker.patch("webapp.main.s3.read_job_config", return_value=config_dict)
+    mocker.patch("webapp.main.s3.read_job_inputs", return_value=s3_keys)
+    create_job = mocker.patch("webapp.jobs.create_job", return_value="new-job-uuid")
+
+    resp = client.post(f"/api/job/{original_job}/rebuild")
+    assert resp.status_code == 200
+    assert resp.json() == {"job_id": "new-job-uuid"}
+    create_job.assert_called_once_with(config_dict, s3_keys, owner_sub="")
+
+
+def test_rebuild_job_404_when_missing(mocker, client):
+    mocker.patch("webapp.main.s3.read_job_state", return_value=None)
+    resp = client.post("/api/job/00000000-0000-0000-0000-000000000099/rebuild")
+    assert resp.status_code == 404
+
+
+def test_rebuild_job_409_when_inputs_not_persisted(mocker, client):
+    """Jobs created before the rebuild feature didn't persist s3_keys —
+    return a clear 409 instead of crashing or silently rebuilding empty."""
+    mocker.patch("webapp.main.s3.read_job_state",
+                 return_value={"owner_sub": "", "status": "complete"})
+    mocker.patch("webapp.main.s3.read_job_config", return_value=_make_config())
+    mocker.patch("webapp.main.s3.read_job_inputs", return_value=None)
+
+    resp = client.post("/api/job/00000000-0000-0000-0000-000000000002/rebuild")
+    assert resp.status_code == 409
+    assert "rebuild" in resp.json()["detail"].lower()
+
+
 def _make_config() -> dict:
     return {
         "user_name": "Alice Johnson",

@@ -95,6 +95,34 @@ def delete_job(job_id: str) -> None:
             _client().delete_objects(Bucket=settings.s3_bucket, Delete={"Objects": objects})
 
 
+def write_job_inputs(job_id: str, s3_keys: list[str]) -> None:
+    """Persist the original upload s3_keys so a job can be rebuilt later."""
+    _client().put_object(
+        Bucket=settings.s3_bucket,
+        Key=f"jobs/{job_id}/inputs.json",
+        Body=json.dumps({"s3_keys": s3_keys}).encode(),
+        ContentType="application/json",
+        ServerSideEncryption="AES256",
+    )
+
+
+def read_job_inputs(job_id: str) -> list[str] | None:
+    """Read the s3_keys persisted at job creation. None if not present
+    (older jobs created before this field was persisted)."""
+    try:
+        obj = _client().get_object(Bucket=settings.s3_bucket, Key=f"jobs/{job_id}/inputs.json")
+    except _client().exceptions.NoSuchKey:
+        return None
+    except Exception:
+        return None
+    try:
+        data = json.loads(obj["Body"].read())
+    except (json.JSONDecodeError, KeyError):
+        return None
+    keys = data.get("s3_keys")
+    return keys if isinstance(keys, list) else None
+
+
 def upload_wiki_debug_artifacts(job_id: str, local_dir: str) -> list[str]:
     """Upload per-chunk wiki debug artifacts under jobs/{job_id}/wiki_debug/.
 
