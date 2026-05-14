@@ -207,9 +207,32 @@ def _path_is_tracked(path: str, tracked_paths: list[str]) -> bool:
     return False
 
 
+def _path_is_excluded(path: str, excluded_paths: list[str]) -> bool:
+    """A path is excluded if it exactly matches an exclude entry, or starts with
+    one whose entry ends in '/' (directory exclude).
+    Excluded paths exist in Jay's repo but are intentionally not mirrored into
+    entropy-template/ (so they don't ship in vault zips to end users).
+    """
+    for ep in excluded_paths or []:
+        if ep.endswith("/") and path.startswith(ep):
+            return True
+        if path == ep:
+            return True
+    return False
+
+
 def _apply_rename(entry: dict, manifest: dict, dry_run: bool) -> list[str]:
     src_rel = entry["from"].rstrip("/")
     dst_rel = entry["to"].rstrip("/")
+    excluded = manifest.get("excluded_paths", [])
+    if _path_is_excluded(src_rel, excluded) and _path_is_excluded(dst_rel, excluded):
+        return [f"skipped (excluded): rename {src_rel} -> {dst_rel}"]
+    if _path_is_excluded(src_rel, excluded) or _path_is_excluded(dst_rel, excluded):
+        # Rename crosses the exclusion boundary — needs human handling.
+        raise ValidationError(
+            f"rename: {src_rel!r} -> {dst_rel!r} crosses exclusion boundary; "
+            "split into delete_file + add_file or adjust excluded_paths"
+        )
     src_abs = TEMPLATE_ROOT / src_rel
     dst_abs = TEMPLATE_ROOT / dst_rel
     if not src_abs.exists():
@@ -236,6 +259,8 @@ def _apply_rename(entry: dict, manifest: dict, dry_run: bool) -> list[str]:
 
 def _apply_add_file(entry: dict, jay_repo: Path, manifest: dict, version: str, dry_run: bool) -> list[str]:
     rel = entry["path"]
+    if _path_is_excluded(rel, manifest.get("excluded_paths", [])):
+        return [f"skipped (excluded): {rel}"]
     if not _path_is_tracked(rel, manifest["tracked_paths"]):
         raise ValidationError(f"add_file: {rel!r} is outside tracked_paths; widen tracked_paths or fix the entry")
     src = jay_repo / rel
@@ -256,6 +281,8 @@ def _apply_add_file(entry: dict, jay_repo: Path, manifest: dict, version: str, d
 
 def _apply_delete_file(entry: dict, manifest: dict, dry_run: bool) -> list[str]:
     rel = entry["path"]
+    if _path_is_excluded(rel, manifest.get("excluded_paths", [])):
+        return [f"skipped (excluded): {rel}"]
     if rel not in manifest["files"]:
         raise ValidationError(f"delete_file: {rel!r} not in manifest")
     target = TEMPLATE_ROOT / rel
@@ -267,6 +294,8 @@ def _apply_delete_file(entry: dict, manifest: dict, dry_run: bool) -> list[str]:
 
 def _apply_content_patch(entry: dict, jay_repo: Path, manifest: dict, version: str, dry_run: bool) -> list[str]:
     rel = entry["path"]
+    if _path_is_excluded(rel, manifest.get("excluded_paths", [])):
+        return [f"skipped (excluded): {rel}"]
     if rel not in manifest["files"]:
         raise ValidationError(f"content_patch: {rel!r} not in manifest; add_file first")
     src = jay_repo / rel
@@ -282,6 +311,9 @@ def _apply_content_patch(entry: dict, jay_repo: Path, manifest: dict, version: s
 
 
 def _apply_structure_split(entry: dict, manifest: dict) -> list[str]:
+    src_rel = entry["from"].rstrip("/")
+    if _path_is_excluded(src_rel, manifest.get("excluded_paths", [])):
+        return [f"skipped (excluded): structure_split from {src_rel}"]
     """Bot-side: just create the destination folders + flag for human review.
 
     The actual per-file classification happens in the migration applier
@@ -320,7 +352,14 @@ def _apply_change_entry(entry: dict, jay_repo: Path, manifest: dict, version: st
 # -----------------------------------------------------------------------------
 
 def _detect_drift(jay_repo: Path, manifest: dict, processed_paths: set[str]) -> list[str]:
-    """List files where Jay's hash differs from manifest, that no CHANGES entry covered."""
+    """List files where Jay's hash differs from manifest, that no CHANGES entry covered.
+
+    Tracked-but-excluded files are not in manifest['files'] in the first place, so
+    they're naturally absent here. We also walk Jay's tracked_paths to catch any
+    new files Jay added in tracked dirs that aren't yet in the manifest (would
+    indicate a missing add_file CHANGES entry).
+    """
+    excluded = manifest.get("excluded_paths", [])
     drift = []
     for rel, info in manifest["files"].items():
         if rel in processed_paths:
@@ -331,6 +370,19 @@ def _detect_drift(jay_repo: Path, manifest: dict, processed_paths: set[str]) -> 
             continue
         if _sha256(jay_path) != info["source_sha256"]:
             drift.append(f"content changed without CHANGES entry: {rel}")
+    # New files in tracked paths that aren't in manifest and aren't excluded
+    for tp in manifest["tracked_paths"]:
+        target = jay_repo / tp
+        if tp.endswith("/") and target.is_dir():
+            for f in sorted(target.rglob("*")):
+                if not f.is_file():
+                    continue
+                rel = str(f.relative_to(jay_repo)).replace("\\", "/")
+                if rel in manifest["files"] or rel in processed_paths:
+                    continue
+                if _path_is_excluded(rel, excluded):
+                    continue
+                drift.append(f"new file in tracked path without CHANGES entry: {rel}")
     return drift
 
 

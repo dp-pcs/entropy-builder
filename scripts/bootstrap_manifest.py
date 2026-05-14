@@ -29,6 +29,11 @@ DEFAULT_TRACKED_PATHS = [
     "Portfolio Brain/Company-Rules.md",
 ]
 
+DEFAULT_EXCLUDED_PATHS = [
+    # Operational skills used by Jay's agent that have no value to end users.
+    "Portfolio Brain/_skills/changelog-discipline.md",
+]
+
 DEFAULT_SOURCE_REPO = "jaykhalife/entropy"
 DEFAULT_SOURCE_BRANCH = "main"
 
@@ -63,9 +68,14 @@ def _iter_tracked_files(template_root: Path, tracked_paths: list[str]):
                 yield entry, target
 
 
-def build_manifest(jay_head: str, tracked_paths: list[str]) -> dict:
+def build_manifest(jay_head: str, tracked_paths: list[str], excluded_paths: list[str]) -> dict:
     files: dict[str, dict] = {}
     for rel_path, abs_path in _iter_tracked_files(TEMPLATE_ROOT, tracked_paths):
+        if any(
+            (ep.endswith("/") and rel_path.startswith(ep)) or rel_path == ep
+            for ep in excluded_paths
+        ):
+            continue
         files[rel_path] = {
             "source_sha256": _sha256(abs_path),
             "dest_path_in_template": f"entropy-template/{rel_path}",
@@ -79,6 +89,7 @@ def build_manifest(jay_head: str, tracked_paths: list[str]) -> dict:
         "last_synced_commit": jay_head,
         "last_synced_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tracked_paths": tracked_paths,
+        "excluded_paths": excluded_paths,
         "files": files,
         "ingested_changes": [],
     }
@@ -99,7 +110,7 @@ def main():
         print(f"invalid Jay-repo HEAD: {jay_head!r}", file=sys.stderr)
         sys.exit(1)
 
-    manifest = build_manifest(jay_head, DEFAULT_TRACKED_PATHS)
+    manifest = build_manifest(jay_head, DEFAULT_TRACKED_PATHS, DEFAULT_EXCLUDED_PATHS)
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"wrote {MANIFEST_PATH}")
     print(f"  tracking {len(manifest['files'])} files")

@@ -21,6 +21,9 @@ two questions on every run:
     "Portfolio Brain/_analytics/",
     "Portfolio Brain/Company-Rules.md"
   ],
+  "excluded_paths": [
+    "Portfolio Brain/_skills/changelog-discipline.md"
+  ],
   "files": {
     "Portfolio Brain/_skills/ingestion.md": {
       "source_sha256": "abc123...",
@@ -54,7 +57,8 @@ two questions on every run:
 | `last_synced_commit` | string | Commit SHA we last processed; bot only looks at changes after this |
 | `last_synced_at` | ISO string | Wall-clock for human inspection |
 | `tracked_paths` | string[] | Path prefixes/files we mirror. Anything in Jay's repo outside these is ignored. Trailing `/` means "directory contents, recursive." |
-| `files` | object | One entry per mirrored file with its source content hash |
+| `excluded_paths` | string[] | Path prefixes/files inside `tracked_paths` that we explicitly do NOT mirror into `entropy-template/`. Used for operational files (e.g., `changelog-discipline.md` itself — relevant in Jay's repo, irrelevant to end users). Same prefix-with-`/` semantics as `tracked_paths`. |
+| `files` | object | One entry per mirrored file with its source content hash. Excluded files are never added here. |
 | `files[path].source_sha256` | string | SHA-256 of Jay's copy at last sync. Bot uses this to detect content drift even when no CHANGES entry was written (defensive) |
 | `ingested_changes` | object[] | History of every CHANGES/vX.Y.Z.md we've processed |
 

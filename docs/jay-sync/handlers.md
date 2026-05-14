@@ -11,6 +11,25 @@ recognizes. It is the source of truth for both:
 Adding a new handler is a deliberate cross-cutting change: schema here, bot
 validator update, applier implementation, end-to-end test.
 
+## Exclusion semantics
+
+Every handler checks `excluded_paths` from the manifest before touching the
+filesystem. If the entry's target path is excluded:
+
+- The handler returns a `skipped (excluded): <path>` action note
+- No file is copied/deleted/moved in `entropy-template/`
+- No entry is added or modified in `manifest.files`
+- The version IS still recorded in `manifest.ingested_changes` so the bot
+  doesn't re-process it on the next run
+
+`rename` is special: if `from` and `to` are on opposite sides of the
+exclusion boundary, the bot raises a `ValidationError` rather than silently
+guessing. Resolve by splitting the rename into `delete_file` + `add_file`,
+or by adjusting `excluded_paths`.
+
+Excluded paths also do not trigger drift detection — they exist in Jay's
+repo intentionally without being mirrored.
+
 ## Common fields
 
 Every entry in `CHANGES/*.md` `changes:` has these:

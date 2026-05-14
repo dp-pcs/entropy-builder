@@ -356,6 +356,92 @@ changes:
         sync.run(jay)
 
 
+def test_excluded_add_file_is_skipped_and_recorded(fake_repos, capsys):
+    """add_file on an excluded path: no template copy, no manifest['files'] entry,
+    but the version IS recorded as ingested so we don't re-process every run."""
+    jay, template = fake_repos
+    # Add an exclusion to the manifest
+    manifest = json.loads((template / ".jay-sync-manifest.json").read_text())
+    manifest["excluded_paths"] = ["Portfolio Brain/_skills/internal-only.md"]
+    (template / ".jay-sync-manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    (jay / "Portfolio Brain" / "_skills" / "internal-only.md").write_text("# Internal\n")
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+summary: Add internal-only skill
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/internal-only.md
+    rationale: "Jay-only skill; not for end users"
+---
+
+Excluded from user vaults.
+""")
+    _commit_all(jay, "add internal skill")
+
+    assert sync.run(jay) == 0
+
+    # Template did NOT get the file
+    assert not (template / "Portfolio Brain" / "_skills" / "internal-only.md").exists()
+
+    manifest = json.loads((template / ".jay-sync-manifest.json").read_text())
+    # File is NOT in manifest['files'] (we don't track excluded files)
+    assert "Portfolio Brain/_skills/internal-only.md" not in manifest["files"]
+    # But the version IS recorded so we don't re-process
+    assert manifest["ingested_changes"][0]["version"] == "1.1.0"
+
+    # PR body mentions the skip
+    out = capsys.readouterr().out
+    assert "skipped (excluded)" in out
+    assert "Portfolio Brain/_skills/internal-only.md" in out
+
+
+def test_excluded_path_does_not_trigger_drift(fake_repos, capsys):
+    """A new file Jay added in a tracked-but-excluded location should NOT show
+    up as drift."""
+    jay, template = fake_repos
+    manifest = json.loads((template / ".jay-sync-manifest.json").read_text())
+    manifest["excluded_paths"] = ["Portfolio Brain/_skills/internal-only.md"]
+    (template / ".jay-sync-manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    (jay / "Portfolio Brain" / "_skills" / "internal-only.md").write_text("# Internal\n")
+    _commit_all(jay, "add internal skill without CHANGES entry")
+
+    result = sync.run(jay)
+    # Either 0 (drift report) or 2 (nothing to do). Should NOT be drift on the
+    # excluded file specifically.
+    out = capsys.readouterr().out
+    assert "internal-only.md" not in out
+
+
+def test_rename_across_exclusion_boundary_raises(fake_repos):
+    """Rename from excluded -> tracked (or vice versa) needs human handling."""
+    jay, template = fake_repos
+    manifest = json.loads((template / ".jay-sync-manifest.json").read_text())
+    manifest["excluded_paths"] = ["Portfolio Brain/_skills/secret.md"]
+    (template / ".jay-sync-manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    # Try renaming a tracked file INTO the excluded slot
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+summary: Bad rename across boundary
+changes:
+  - type: rename
+    from: Portfolio Brain/_skills/ingestion.md
+    to: Portfolio Brain/_skills/secret.md
+    rationale: "shouldn't be allowed"
+---
+""")
+    _commit_all(jay, "bad rename")
+
+    with pytest.raises(sync.ValidationError, match="exclusion boundary"):
+        sync.run(jay)
+
+
 def test_dry_run_does_not_write_files(fake_repos, capsys):
     jay, template = fake_repos
     new_skill = jay / "Portfolio Brain" / "_skills" / "dry.md"

@@ -9,6 +9,9 @@
     "Portfolio Brain/_analytics/",
     "Portfolio Brain/Company-Rules.md"
   ],
+  "excluded_paths": [
+    "Portfolio Brain/_skills/changelog-discipline.md"
+  ],
   "files": {
     "Portfolio Brain/_skills/alerting.md": {
       "source_sha256": "d9ce0083ad0d17923f3103d7640c9a7e6e765c2fb2eb3fa840cc60a5365f300a",
