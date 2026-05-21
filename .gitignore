@@ -9,3 +9,4 @@ node_modules/
 .worktrees/
 .venv/
 venv/
+jaime_debug*/
