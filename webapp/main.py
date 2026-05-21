@@ -1,6 +1,8 @@
 # webapp/main.py
+import io
 import json
 import re
+import tarfile
 from pathlib import Path
 from typing import Optional
 import requests
@@ -69,6 +71,22 @@ def _load_template_version() -> Optional[dict]:
         return json.loads(version_file.read_text())
     except (OSError, json.JSONDecodeError):
         return None
+
+
+# Paths inside entropy-template/ never useful to the applier — keep them out of
+# the archive so clients don't waste bytes (or hit perm errors on .DS_Store etc.).
+_ARCHIVE_EXCLUDE_NAMES = {".DS_Store", "__pycache__", ".git"}
+
+
+def _build_template_archive(root: Path) -> bytes:
+    """Return a gzipped tar of `root` (paths relative to root, junk dirs filtered)."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for path in sorted(root.rglob("*")):
+            if any(part in _ARCHIVE_EXCLUDE_NAMES for part in path.relative_to(root).parts):
+                continue
+            tar.add(path, arcname=str(path.relative_to(root)), recursive=False)
+    return buf.getvalue()
 
 
 def _check_job_access(state: dict, user: Optional[dict], html: bool = False, job_id: str = "") -> None:
@@ -156,6 +174,24 @@ def create_app() -> FastAPI:
         if not path.is_file():
             raise HTTPException(status_code=404, detail=f"no migration for {scope}@v{version}")
         return PlainTextResponse(content=path.read_text(), media_type="text/markdown")
+
+    @app.get("/api/template/archive")
+    def template_archive():
+        """Public: gzipped tar of entropy-template/ for the applier to read file bodies.
+
+        The applier fetches this once per run, extracts to a temp dir, and uses
+        it as the equivalent of --local-source. No per-version snapshots —
+        local-source mode has the same semantics (reads HEAD of the checkout).
+        """
+        root = _template_root()
+        if root is None:
+            raise HTTPException(status_code=503, detail="template archive not available")
+        data = _build_template_archive(root)
+        return Response(
+            content=data,
+            media_type="application/gzip",
+            headers={"Content-Disposition": 'attachment; filename="entropy-template.tar.gz"'},
+        )
 
     @app.get("/api/me")
     def me(user=Depends(_current_user)):

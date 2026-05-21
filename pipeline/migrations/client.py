@@ -2,22 +2,22 @@
 
 Two responsibilities:
 
-1. Talk to the webapp endpoints (`/api/template/version`, `/api/migrations/{version}`)
-   for the version signal and the CHANGES file text.
+1. Talk to the webapp endpoints (`/api/template/version`, `/api/migrations/{version}`,
+   `/api/template/archive`) for the version signal, CHANGES text, and file bodies.
 2. Provide a `--local-source` escape hatch that points at a local
    `entropy-template/` checkout, so the applier can be exercised end-to-end
    without depending on a running webapp.
 
-Why both: the public `/api/migrations/{version}` endpoint serves the CHANGES
-file *text*. The applier also needs the **file bodies** referenced by
-`add_file` / `content_patch` entries, and there is no public endpoint for those
-yet (HTTP file fetch is a follow-up). For now the applier resolves bodies via
-a `source_root: Path` — either a local checkout (`--local-source`) or, later,
-a downloaded + extracted archive.
+The applier resolves file bodies via a `source_root: Path`. In `--local-source`
+mode that's the checkout directly; in HTTP mode the orchestrator fetches
+`/api/template/archive`, extracts to a temp dir, and uses that as the
+synthetic source_root (matches local-source semantics 1:1).
 """
 from __future__ import annotations
 
+import io
 import json
+import tarfile
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -114,6 +114,32 @@ def fetch_migration_payload_text(
         raise MigrationClientError(f"migration payload not UTF-8: {e}") from None
 
 
+def fetch_template_archive(base_url: str = DEFAULT_BASE_URL) -> bytes:
+    """Fetch the gzipped tar of entropy-template/ from the webapp."""
+    url = f"{base_url.rstrip('/')}/api/template/archive"
+    body, _ = _http_get(url, timeout=30.0)
+    return body
+
+
+def extract_template_archive(archive_bytes: bytes, dest: Path) -> None:
+    """Extract a gzipped tar into `dest`. Refuses absolute or parent-escaping paths."""
+    dest.mkdir(parents=True, exist_ok=True)
+    try:
+        tar = tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz")
+    except tarfile.TarError as e:
+        raise MigrationClientError(f"template archive is not a valid tar.gz: {e}") from None
+    with tar:
+        for member in tar.getmembers():
+            member_path = Path(member.name)
+            if member_path.is_absolute() or ".." in member_path.parts:
+                raise MigrationClientError(f"unsafe member path in archive: {member.name!r}")
+        # Python 3.12+ has a `filter` arg; tolerate older runtimes by extracting all.
+        try:
+            tar.extractall(dest, filter="data")  # type: ignore[arg-type]
+        except TypeError:
+            tar.extractall(dest)
+
+
 # -----------------------------------------------------------------------------
 # Local-source path (offline / testing)
 # -----------------------------------------------------------------------------
@@ -155,29 +181,22 @@ def load_bundle(
     version: str,
     *,
     scope: str = SCOPE_CORE,
-    local_source: Optional[Path] = None,
+    local_source: Path,
     base_url: str = DEFAULT_BASE_URL,
 ) -> MigrationBundle:
     """Return a MigrationBundle for one version.
 
-    When `local_source` is set, both payload and file bodies come from that
-    checkout. Otherwise payload is fetched over HTTP and `source_root` is
-    `local_source` — meaning HTTP-only mode without a local checkout is *not
-    currently supported* (handler bodies need to come from somewhere). This is
-    a known limitation; see bd-ez3 follow-up for HTTP file-fetch support.
+    `local_source` is required: either a real checkout (`--local-source`) or
+    the temp dir the orchestrator created by extracting `/api/template/archive`.
+    Payload text comes from the same directory's `.changelog/` — the archive
+    includes it, so HTTP mode and offline mode are symmetric.
     """
-    if local_source is not None:
-        payload_text = local_migration_payload_text(local_source, version, scope=scope)
-        return MigrationBundle(
-            version=version,
-            scope=scope,
-            payload_text=payload_text,
-            source_root=local_source,
-        )
-    # Pure HTTP mode is not yet usable because there's no endpoint for file bodies.
-    raise MigrationClientError(
-        "load_bundle: HTTP-only mode requires a file-body source; pass --local-source. "
-        "(File-body endpoint is a follow-up; see bd-ez3 notes.)"
+    payload_text = local_migration_payload_text(local_source, version, scope=scope)
+    return MigrationBundle(
+        version=version,
+        scope=scope,
+        payload_text=payload_text,
+        source_root=local_source,
     )
 
 

@@ -100,3 +100,43 @@ def test_migrations_no_auth_required(client, template_fixture):
     """Confirm the endpoint is genuinely public — no cookie sent."""
     resp = client.get("/api/migrations/1.2.0", cookies={})
     assert resp.status_code == 200
+
+
+def test_archive_endpoint_returns_tarball(client, template_fixture):
+    import io
+    import tarfile
+
+    (template_fixture / "_skills" / "intro.md").parent.mkdir(parents=True)
+    (template_fixture / "_skills" / "intro.md").write_text("# intro\n")
+
+    resp = client.get("/api/template/archive")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/gzip"
+    assert "attachment" in resp.headers["content-disposition"]
+
+    with tarfile.open(fileobj=io.BytesIO(resp.content), mode="r:gz") as tar:
+        names = set(tar.getnames())
+    assert "TEMPLATE_VERSION.json" in names
+    assert ".changelog/core/v1.2.0.md" in names
+    assert "_skills/intro.md" in names
+
+
+def test_archive_endpoint_excludes_junk(client, template_fixture):
+    import io
+    import tarfile
+
+    (template_fixture / ".DS_Store").write_bytes(b"junk")
+    (template_fixture / "_skills").mkdir()
+    (template_fixture / "_skills" / "__pycache__").mkdir()
+    (template_fixture / "_skills" / "__pycache__" / "x.pyc").write_bytes(b"junk")
+
+    resp = client.get("/api/template/archive")
+    with tarfile.open(fileobj=io.BytesIO(resp.content), mode="r:gz") as tar:
+        names = set(tar.getnames())
+    assert not any(".DS_Store" in n or "__pycache__" in n for n in names)
+
+
+def test_archive_endpoint_503_when_unconfigured(client, mocker):
+    mocker.patch("webapp.main.settings.entropy_template_path", "")
+    resp = client.get("/api/template/archive")
+    assert resp.status_code == 503

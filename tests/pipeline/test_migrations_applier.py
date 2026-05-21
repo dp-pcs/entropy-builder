@@ -8,12 +8,14 @@ under tmp_path, drives apply() in --local-source mode, and asserts:
   - wikilink rewrite happens on rename and is counted in the report
   - manifest mode tightens delete/patch semantics (precise vs. conservative)
 """
+import io
 import json
+import tarfile
 from pathlib import Path
 
 import pytest
 
-from pipeline.migrations import applier, report
+from pipeline.migrations import applier, client, report
 from pipeline.migrations.paths import sha256_of_path
 
 
@@ -266,3 +268,87 @@ def test_report_written_under_vault_outputs(vault, local_source):
     assert written.exists()
     assert "Migration report" in written.read_text()
     assert written.parent.name == "outputs"
+
+
+# -----------------------------------------------------------------------------
+# HTTP mode — orchestrator fetches /api/template/archive once, extracts to a
+# temp dir, then drives the rest with that synthetic local_source.
+# -----------------------------------------------------------------------------
+
+def _tar_gz_of(root: Path) -> bytes:
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for p in sorted(root.rglob("*")):
+            tar.add(p, arcname=str(p.relative_to(root)), recursive=False)
+    return buf.getvalue()
+
+
+def test_http_mode_extracts_archive_and_applies(vault, local_source, mocker):
+    """HTTP mode: applier fetches archive, extracts, applies the same as --local-source."""
+    _write(local_source / "Portfolio Brain" / "_skills" / "skill-a.md", "# A\n")
+    _changes_file(local_source, "1.1.0", [
+        {"type": "add_file", "path": "Portfolio Brain/_skills/skill-a.md", "rationale": "add A"},
+    ])
+    archive_bytes = _tar_gz_of(local_source)
+    fetch = mocker.patch("pipeline.migrations.client.fetch_template_archive", return_value=archive_bytes)
+
+    rpt = applier.apply(vault, local_source=None, base_url="https://test.invalid")
+
+    fetch.assert_called_once()
+    assert rpt.to_version == "1.1.0"
+    assert (vault / "Portfolio Brain" / "_skills" / "skill-a.md").read_text() == "# A\n"
+
+
+def test_http_mode_replays_multiple_versions_from_archive(vault, local_source, mocker):
+    """Confirms the archive's .changelog/ enables full multi-version replay over HTTP."""
+    _write(local_source / "Portfolio Brain" / "_skills" / "skill-a.md", "# A\n")
+    _write(local_source / "Portfolio Brain" / "_skills" / "skill-b.md", "# B\n")
+    _changes_file(local_source, "1.1.0", [
+        {"type": "add_file", "path": "Portfolio Brain/_skills/skill-a.md", "rationale": "add A"},
+    ])
+    _changes_file(local_source, "1.2.0", [
+        {"type": "add_file", "path": "Portfolio Brain/_skills/skill-b.md", "rationale": "add B"},
+    ])
+    archive_bytes = _tar_gz_of(local_source)
+    mocker.patch("pipeline.migrations.client.fetch_template_archive", return_value=archive_bytes)
+
+    rpt = applier.apply(vault, local_source=None, base_url="https://test.invalid")
+
+    assert rpt.to_version == "1.2.0"
+    assert (vault / "Portfolio Brain" / "_skills" / "skill-a.md").exists()
+    assert (vault / "Portfolio Brain" / "_skills" / "skill-b.md").exists()
+
+
+def test_http_mode_cleans_up_tempdir(vault, local_source, mocker):
+    """The TemporaryDirectory must be gone after apply() returns."""
+    _write(local_source / "Portfolio Brain" / "_skills" / "skill-a.md", "# A\n")
+    _changes_file(local_source, "1.1.0", [
+        {"type": "add_file", "path": "Portfolio Brain/_skills/skill-a.md", "rationale": "x"},
+    ])
+    archive_bytes = _tar_gz_of(local_source)
+    mocker.patch("pipeline.migrations.client.fetch_template_archive", return_value=archive_bytes)
+
+    extracted_dirs: list[Path] = []
+    real_extract = client.extract_template_archive
+
+    def spy_extract(data, dest):
+        extracted_dirs.append(dest)
+        return real_extract(data, dest)
+
+    mocker.patch("pipeline.migrations.client.extract_template_archive", side_effect=spy_extract)
+
+    applier.apply(vault, local_source=None, base_url="https://test.invalid")
+
+    assert extracted_dirs and not extracted_dirs[0].exists(), "tempdir should be cleaned up"
+
+
+def test_extract_archive_rejects_path_traversal(tmp_path):
+    """Defense against malicious tarballs."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        info = tarfile.TarInfo(name="../escape.txt")
+        info.size = 4
+        tar.addfile(info, io.BytesIO(b"oops"))
+
+    with pytest.raises(client.MigrationClientError, match="unsafe member path"):
+        client.extract_template_archive(buf.getvalue(), tmp_path / "out")

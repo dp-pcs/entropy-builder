@@ -16,10 +16,12 @@ builder-side manifest emission that turns this into precise tracking.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import re
 import shutil
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -461,20 +463,40 @@ def apply(
     """Replay all unconsumed CHANGES against `vault_root` in semver order.
 
     `target_version` overrides the "latest" lookup. `versions` overrides the
-    full ordered list (mainly for tests). Otherwise version discovery prefers
-    `local_source/.changelog/<scope_dir>/` and falls back to a one-shot
-    `latest` from the HTTP version endpoint.
+    full ordered list (mainly for tests). Version discovery and file-body
+    resolution both read from `local_source`; when None, the orchestrator
+    fetches `/api/template/archive` once and extracts to a temp dir that
+    serves as the synthetic local_source for this run.
     """
+    with contextlib.ExitStack() as stack:
+        if local_source is None:
+            tmp = stack.enter_context(tempfile.TemporaryDirectory(prefix="entropy-template-"))
+            archive = client.fetch_template_archive(base_url=base_url)
+            client.extract_template_archive(archive, Path(tmp))
+            local_source = Path(tmp)
+
+        return _apply_with_source(
+            vault_root,
+            local_source=local_source,
+            scope=scope,
+            dry_run=dry_run,
+            target_version=target_version,
+            versions=versions,
+        )
+
+
+def _apply_with_source(
+    vault_root: Path,
+    *,
+    local_source: Path,
+    scope: str,
+    dry_run: bool,
+    target_version: Optional[str],
+    versions: Optional[Iterable[str]],
+) -> report.MigrationReport:
     local = read_vault_version(vault_root)
     if versions is None:
-        if local_source is not None:
-            available = list_local_versions(local_source, scope=scope)
-        else:
-            info = client.fetch_version_info(base_url=base_url)
-            latest = info.versions.get(scope) or info.core_version
-            if latest is None:
-                raise client.MigrationClientError("no version info available")
-            available = [latest]
+        available = list_local_versions(local_source, scope=scope)
         if target_version is not None:
             available = [v for v in available if not _semver_gt(v, target_version)]
         if local is not None:
@@ -496,7 +518,7 @@ def apply(
     manifest = read_vault_manifest(vault_root)
 
     for v in ordered:
-        bundle = client.load_bundle(v, scope=scope, local_source=local_source, base_url=base_url)
+        bundle = client.load_bundle(v, scope=scope, local_source=local_source)
         parsed = parser.parse_change_file_text(bundle.payload_text, filename=f"v{v}.md")
         parser.validate_change_file(parsed)
         meta = parsed["meta"]
