@@ -244,8 +244,14 @@ def run_pipeline_job(job_id: str, config_dict: dict, s3_keys: list[str]) -> None
         log_activity(job_id, "Assembling vault", kind="phase")
         set_current_activity(job_id, "building zip", kind="synthesize")
         all_customer_files = customer_files + [domains_vf] + email_files + drive_files + transcript_files
+        connector_stats = {
+            "gmail": len(email_files),
+            "readai": len(transcript_files),
+            "drive": len(drive_files),
+        }
         zip_bytes = vault_builder.build_vault(
-            config, wiki_files, customers, all_customer_files, hub_nodes, gap_items
+            config, wiki_files, customers, all_customer_files, hub_nodes, gap_items,
+            connector_stats=connector_stats,
         )
         vault_key = s3.upload_vault(job_id, zip_bytes)
         claude_settings_key = s3.upload_claude_settings(job_id, generate_claude_settings(config))

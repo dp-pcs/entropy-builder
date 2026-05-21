@@ -86,7 +86,11 @@ def main():
     all_customer_files = customer_files + [domains_vf] + email_stubs + transcript_stubs
 
     print("Step 5: Building vault ZIP...")
-    zip_bytes = build_vault(cfg, wiki_files, customers, all_customer_files, hub_nodes, gaps)
+    connector_stats = {"gmail": len(email_stubs), "readai": len(transcript_stubs)}
+    zip_bytes = build_vault(
+        cfg, wiki_files, customers, all_customer_files, hub_nodes, gaps,
+        connector_stats=connector_stats,
+    )
     Path(args.output).write_bytes(zip_bytes)
     print(f"  Vault written to {args.output} ({len(zip_bytes):,} bytes)")
     print("Done.")

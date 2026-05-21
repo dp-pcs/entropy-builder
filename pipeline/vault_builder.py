@@ -191,6 +191,108 @@ def _safe_zip_path(path: str) -> str:
     return normalized
 
 
+# Minimal fallback if entropy-template/_handoff/SKILL.md is missing at build time.
+# The canonical, fuller version lives at that path; keep them in sync.
+_HANDOFF_SKILL_FALLBACK = """---
+name: handoff
+description: Session-start protocol — read _handoff/STATE.json, surface what the builder left to finish, execute scoped work, write status back, and check for template updates.
+owner: entropy_builder (core pack — not synced from Jay's repo)
+---
+
+# Handoff & Updates — Session Start
+
+Run at the start of every session.
+
+1. Read `_handoff/STATE.json` — `connectors`, `extraction_waves`, `open_gaps`, `next_actions`.
+2. Surface `next_actions` / `pending` waves / `needed` connectors to the user. Do not auto-run extraction or touch connectors without the user choosing.
+3. Execute the chosen item (wire a `needed` connector, or run a `pending` wave via the matching `Portfolio Brain/_skills/` skill).
+4. Write status back: connector `needed`→`pulled`, wave `pending`→`done`, prune `next_actions`. Re-save the file.
+5. Check `vault_version.json` `template_version` against `update_check_url`; if behind, tell the user and (when available) run the migration applier, never silently overwriting local edits.
+"""
+
+# Role → Layer-3 extraction waves the builder cannot do itself (Cowork-driven).
+# See docs/prd-handoff-manifest-and-migration-applier.md (Build 1).
+_EXTRACTION_WAVES_BY_ROLE = {
+    "ic": [
+        {"id": "wave-1", "scope": "Tier-1 renewals in next 90d"},
+        {"id": "wave-2", "scope": "At-risk accounts"},
+    ],
+    "manager": [
+        {"id": "wave-1", "scope": "Team-wide renewals in next 90d"},
+        {"id": "wave-2", "scope": "At-risk accounts across the team"},
+    ],
+    "external": [],
+}
+
+
+def _generate_handoff_state(
+    config: JobConfig,
+    customers: list[CustomerRecord],
+    gap_items: list[GapItem],
+    template_version,
+    connector_stats: dict | None = None,
+) -> dict:
+    """Builder → Cowork handoff contract (_handoff/STATE.json).
+
+    Describes what the builder did and what's left for an interactive Cowork
+    session to finish (Layer-3 deep extraction). Backward-compatible: when
+    connector_stats is None, connectors whose counts aren't derivable here are
+    reported with status "unknown" rather than a fabricated number.
+    """
+    stats = connector_stats or {}
+
+    def _connector(name, count_key, count_val):
+        """Build a connector entry, defaulting to 'unknown' when count missing."""
+        if count_val is None:
+            return {"status": "unknown", "reason": "count not provided to build_vault"}
+        return {"status": "pulled", count_key: count_val}
+
+    connectors = {
+        # Notion count is always known here — it's len(customers).
+        "notion": {"status": "pulled", "records": len(customers)},
+        "gmail": _connector("gmail", "stubs", stats.get("gmail")),
+        "readai": _connector("readai", "stubs", stats.get("readai")),
+        "drive": _connector("drive", "docs", stats.get("drive")),
+        # Salesforce is a Layer-3 connector — not in the pipeline by design.
+        "salesforce": {
+            "status": "needed",
+            "reason": "no API connector in pipeline; requires Cowork + Chrome",
+        },
+    }
+
+    waves = [
+        {**w, "status": "pending"}
+        for w in _EXTRACTION_WAVES_BY_ROLE.get(config.user_role, [])
+    ]
+
+    # Project the builder's content gaps that imply missing *data* into handoff
+    # gaps. (gaps.json keeps the full set; this is the handoff-relevant subset.)
+    open_gaps = [
+        {"category": g.category, "description": g.description, "blocking": False}
+        for g in gap_items
+        if g.category in ("data", "moc", "transcripts")
+    ]
+
+    next_actions = []
+    for cname, c in connectors.items():
+        if c["status"] == "needed":
+            next_actions.append(f"Wire {cname} (Cowork + Chrome) and pull required fields")
+    for w in waves:
+        next_actions.append(f"Run extraction {w['id']}: {w['scope']}")
+
+    return {
+        "schema_version": 1,
+        "template_version": template_version,
+        "built_at": date.today().isoformat(),
+        "role": config.user_role,
+        "user_name": config.user_name,
+        "connectors": connectors,
+        "extraction_waves": waves,
+        "open_gaps": open_gaps,
+        "next_actions": next_actions,
+    }
+
+
 def build_vault(
     config: JobConfig,
     wiki_files: list[VaultFile],
@@ -198,8 +300,14 @@ def build_vault(
     customer_files: list[VaultFile],
     hub_nodes: list[VaultFile],
     gap_items: list[GapItem],
+    connector_stats: dict | None = None,
 ) -> bytes:
-    """Assemble all pipeline outputs into a ZIP and return bytes."""
+    """Assemble all pipeline outputs into a ZIP and return bytes.
+
+    connector_stats (optional): {"gmail": int, "readai": int, "drive": int} —
+    exact pull counts from run.py/jobs.py for the handoff manifest. When omitted,
+    those connectors report status "unknown" in _handoff/STATE.json.
+    """
     buf = io.BytesIO()
     brain_name = f"{config.user_name}'s Second Brain"
     template = Path(config.entropy_template_path)
@@ -244,15 +352,34 @@ def build_vault(
         zf.writestr("Portfolio Brain/INDEX.md", _portfolio_brain_index(config))
 
         # Template version + changelog (for future update checker)
+        template_version = None
         version_src = template / "TEMPLATE_VERSION.json"
         if version_src.exists():
             version_data = json.loads(version_src.read_text())
+            template_version = version_data.get("version")
             zf.writestr("vault_version.json", json.dumps({
-                "template_version": version_data.get("version"),
+                "template_version": template_version,
                 "built_at": date.today().isoformat(),
                 "update_check_url": "https://entropy.elelem.expert/api/template/version",
             }, indent=2))
             zf.writestr("Portfolio Brain/CHANGELOG.md", _generate_changelog(version_data))
+
+        # Handoff manifest — builder → Cowork contract (Layer-3 deep extraction).
+        # See docs/prd-handoff-manifest-and-migration-applier.md (Build 1).
+        zf.writestr("_handoff/STATE.json", json.dumps(
+            _generate_handoff_state(
+                config, customers, gap_items, template_version, connector_stats
+            ), indent=2
+        ))
+        # Session-start skill that consumes STATE.json (builder-owned "core pack",
+        # not synced from Jay's repo). Copied from template; inline fallback keeps
+        # the contract intact if the template file is ever missing.
+        handoff_skill = template / "_handoff" / "SKILL.md"
+        zf.writestr(
+            "_handoff/SKILL.md",
+            handoff_skill.read_text() if handoff_skill.exists()
+            else _HANDOFF_SKILL_FALLBACK,
+        )
 
         # Gaps JSON (read by status page for inline prompts)
         zf.writestr("gaps.json", json.dumps(
@@ -315,9 +442,10 @@ def generate_claude_md(config: JobConfig) -> str:
 
 ## Session Start Protocol
 
-1. Read `Portfolio Brain/_hot_cache.md` — active fires, decisions, portfolio snapshot
-2. Determine session type (daily scan / weekly sweep / on-demand query)
-3. Load only the required skills from `Portfolio Brain/_skills/`
+1. Run `_handoff/SKILL.md` — read `_handoff/STATE.json`, surface what the builder left to finish (deep extraction, connectors still needed), and check `vault_version.json` for template updates
+2. Read `Portfolio Brain/_hot_cache.md` — active fires, decisions, portfolio snapshot
+3. Determine session type (daily scan / weekly sweep / on-demand query)
+4. Load only the required skills from `Portfolio Brain/_skills/`
 
 ## Skill Routing
 
