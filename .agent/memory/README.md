@@ -1,68 +1,20 @@
-# memory/README.md — How beads work here
+# Retired local task ledger
 
-> This folder is the agent's persistent task graph. It uses either **real Beads** (`bd`, Steve Yegge's Dolt-backed CLI) if detected at install time, or **bd-lite** (a markdown fallback) otherwise. Both expose the same workflow: `bd ready` / `bd update --claim` / `bd close --reason "..."`.
+This directory no longer owns active task state.
 
-## Why beads
-
-LLMs silently skip steps under load. A bead graph makes "done" atomic and dependency-ordered. Closing requires evidence.
-
-Two sources shaped this:
-- **The tool** — [Beads by Steve Yegge](https://github.com/steveyegge/beads). Original Go CLI, Dolt-backed, what `bd-lite` emulates. Announcement: [steve-yegge.medium.com/introducing-beads-a-coding-agent-memory-system](https://steve-yegge.medium.com/introducing-beads-a-coding-agent-memory-system-637d7d92514a).
-- **The methodology** — "How to Fix Your AI Agents Skipping Steps" (Trilogy AI COE) popularized using Beads for agent orchestration.
-
-## Files
-
-- `BEADS.md` — the ledger (human-readable + grep-friendly)
-- `PROMPTS.md` — verbatim log of human instructions
-- `HANDOFF.md` — written at end of each session for the next one
-- `BACKUPS/` — rotating backups of memory files (created as needed)
-- `bd-lite.sh` — CLI helper (present only when real Beads is not active)
-
-## Commands
-
-All run from `.agent/memory/`.
+Use the central Beads hub instead:
 
 ```bash
-./bd-lite.sh create "Task subject" --priority P1 --blocked-by B0003
-./bd-lite.sh ready                     # list unblocked pending beads
-./bd-lite.sh claim B0007               # mark as in_progress, set claimed_by
-./bd-lite.sh close B0007 --reason "Dev server on :3000, test_login.py passes"
-./bd-lite.sh block B0007 --reason "BLOCKED: CLIENT_ID missing from .env.example"
-./bd-lite.sh list                      # show everything
-./bd-lite.sh list --status in_progress
+export BEADS_DIR=$HOME/.beads
+bd ready --json
+bd list --project entropy_builder --json
+bd update <id> --claim
+bd close <id> --reason "<specific evidence>"
 ```
 
-## Rules (for the agent — non-negotiable)
+See `~/.beads/INTEGRATION.md` for the hub contract.
 
-1. **Never close without a reason.** The `--reason` string is proof of work. "done" is not acceptable.
-2. **Be specific.** Include filenames, ports, counts, test names, screenshots. "fixed bug" is not specific.
-3. **Blocked is valid.** If stuck, `block` the bead with a specific blocker. Don't fake completion.
-4. **Never edit BEADS.md by hand.** Use the CLI. Hand-edits break the append-only discipline.
-5. **Check `ready` before claiming.** Dependencies matter.
-6. **One in-progress bead per agent.** Don't claim a second until the first is closed or blocked.
-
-## Upgrading to real Beads (Steve Yegge's tool)
-
-The agentize installer auto-detects real Beads: if `bd` is on PATH when you run
-`npx youragent`, it skips bd-lite and runs `bd init --stealth --skip-agents` instead.
-
-**To install bd:** `brew install beads`
-
-**To upgrade an existing bd-lite install:**
-1. Install bd: `brew install beads`
-2. Re-run: `BEADS_MODE=real npx youragent`
-3. Migrate existing beads manually or with a one-shot script:
-   ```bash
-   # For each open row in BEADS.md (real bd uses lowercase p0/p1/p2):
-   bd create "<subject>" --priority p1
-   ```
-
-**Override flags:**
-- Force real Beads even if auto-detect fails: `BEADS_MODE=real npx youragent`
-- Force bd-lite even when bd is installed: `BEADS_MODE=lite npx youragent`
-
-Full docs: [github.com/steveyegge/beads](https://github.com/steveyegge/beads).
-
-## Session handoff
-
-End of session: update `HANDOFF.md` with what's in flight, what's next, what's blocked. Next session reads it first.
+Historical notes:
+- `bd-lite.sh` and `BEADS.md` were retired on 2026-05-14.
+- Archived copies, if still present, were moved to `/tmp/bd-lite-archive/entropy_builder/`.
+- Older docs in this repo may mention `bd-lite`; translate those references to central `bd` commands against `~/.beads`.

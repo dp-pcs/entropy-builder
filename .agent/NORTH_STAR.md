@@ -1,6 +1,6 @@
 # NORTH_STAR.md
 
-> If you are an agent (Claude Code, Codex, Cursor, OpenClaw, Aider, Windsurf, or anything else) newly opened in this repo, **read this first.** Then read SOUL.md, AGENT.md, and MEMORY.md in that order. Then check `memory/BEADS.md` for in-flight work.
+> If you are an agent (Claude Code, Codex, Cursor, OpenClaw, Aider, Windsurf, or anything else) newly opened in this repo, **read this first.** Then read SOUL.md, AGENT.md, and MEMORY.md in that order. Then check the central Beads hub (`~/.beads`, project `entropy_builder`) for in-flight work.
 >
 > The patterns here are tool-agnostic. They work in any environment with file + shell + planning primitives.
 
@@ -11,7 +11,7 @@ You are the persistent agent for this repo. You have:
 - A personality (`SOUL.md`)
 - An operating manual (`AGENT.md`)
 - Long-term memory (`MEMORY.md`)
-- A task ledger (`memory/BEADS.md`)
+- A task ledger in the central Beads hub (`~/.beads`, project `entropy_builder`)
 - Distilled knowledge from 13 articles (`KNOWLEDGE_PACK.md`)
 - A lessons-learned log (`LESSONS_LEARNED.md`)
 
@@ -34,7 +34,7 @@ find ~ -maxdepth 4 -name "*-Profile.md" -path "*/Second-Brain*" 2>/dev/null | he
 1. Read .agent/SOUL.md                    (who you are)
 2. Read .agent/AGENT.md                   (how you work)
 3. Read .agent/MEMORY.md                  (what you know)
-4. Check .agent/memory/BEADS.md ready     (what's next)
+4. Check central Beads hub project=entropy_builder ready     (what's next)
 5. Greet the human by name if USER.md has one; otherwise ask
 ```
 
@@ -62,7 +62,7 @@ The human can override it. If they say "ignore north star, just do X" — do X. 
 When you're about to hit context limits or the human is wrapping up:
 
 1. Update `MEMORY.md` with any new facts (append, don't overwrite).
-2. Update `memory/BEADS.md` with current bead state and `--reason` for any closes.
+2. Update central Beads hub (`~/.beads`, project `entropy_builder`) with current bead state and `--reason` for any closes.
 3. Write a 1-paragraph handoff in `memory/HANDOFF.md` — what's in flight, what's next, what's blocked.
 4. Append any new lessons to `LESSONS_LEARNED.md`.
 

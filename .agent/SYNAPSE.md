@@ -1,50 +1,61 @@
 # SYNAPSE.md — Organizational Memory
 
-Synapse is the org's centralized knowledge service. You record facts,
-learnings, choices, and objectives from your work so other agents can
-benefit — and query what others have already learned before you start.
+Synapse is the org's centralized memory and coordination service. Query what other agents have already learned before starting, then record durable work with real provenance so future agents can trust it.
 
-  Base URL:    https://synapse-ec2.taild2066.ts.net
-  Auth:        Authorization: Bearer $SYNAPSE_TOKEN  (load from .env)
+  Base URL:    https://synapse-ec2.taild2066.ts.net (env: $SYNAPSE_URL)
+  Auth:        Authorization: Bearer $SYNAPSE_TOKEN
   Project ID:  project.entropy
-  Team ID:     team.aicoe
+  Team ID:     team.ai-coe
 
-Full contract (read once on first use): https://synapse-ec2.taild2066.ts.net/docs
+Live contract sources:
+- Human-readable: $SYNAPSE_URL/docs
+- Machine-readable intent index: $SYNAPSE_URL/openapi.json
+
+Read `/docs` before first use in a fresh environment, and re-read `/docs` plus `/openapi.json` whenever an intent is unfamiliar, the docs smell stale, or server behavior disagrees with your assumptions. Briefs supersede this file.
 
 ---
 
-## First-time setup — enroll and save your token
+## Mental model
 
-Your operator will give you an enrollment command. It looks like this:
+  project ── workflow run (bd_id) ── checkins | artifacts | facts | learnings | insights | choices | decisions | objectives | questions
+
+Everything durable should tie back to a workflow run. Create the run first, then thread both `project_id` and `bd_id` through artifacts, check-ins, facts, learnings, insights, choices, decisions, objectives, and question-related records when applicable.
+
+## Standing directives
+
+1. `project_id` is required everywhere that scopes a run or durable record. `bd_id` is the run; `project_id` is the access scope. Do not assume one can stand in for the other.
+2. `evidence_artifact_id` must come from a real `synapse.artifact.upload` response. Never invent or recycle UUIDs.
+3. `non_obvious_marker` is required for medium/high-confidence learnings, and should also be used for insights whenever the contract expects DOK3-style grounding.
+4. `applies_to` tags must be problem-domain, not project-domain. Avoid tags like `entropy`, `aicoe`, or team names.
+5. `supporting_learning_ids` are required on new insights. Query learnings first, keep the IDs, and link them on `synapse.insight.record`.
+6. Medium/high-confidence facts, learnings, insights, and milestone achievements require a real evidence artifact first. If evidence is weak or absent, lower confidence to `low` or do not record the claim.
+7. Inline-gloss project-specific nouns on first use in learnings or insights so a reader on another team can follow without local context.
+8. Read validated 400 errors carefully. Use `detail.field_errors` when present instead of retrying blindly.
+9. If you use `synapse.feedback.submit`, reserve `severity: "high"` for production-affecting issues.
+
+---
+
+## First-time setup — token and env
+
+Your operator may give you an enrollment flow, but for day-to-day use assume the token already exists in your environment or repo-local `.env`.
 
 ```bash
-curl -sS -X POST https://synapse-ec2.taild2066.ts.net/v1/intent/synapse.agent.enroll \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "<enrollment-code-from-operator>",
-    "display_name": "entropy-claude",
-    "declared_capabilities": ["coder", "evaluator"]
-  }'
-```
-
-The response includes `api_token.raw`. Save it immediately — the server
-only stores a hash, so you cannot retrieve it again:
-
-```
 # .env (repo root — already gitignored)
 SYNAPSE_TOKEN=syn_...
 SYNAPSE_URL=https://synapse-ec2.taild2066.ts.net
 ```
 
-After saving, load with `source .env` before any Synapse call.
+Load it before direct shell calls:
+
+```bash
+source .env
+```
 
 ---
 
 ## Operating loop (every non-trivial task)
 
-### 0. Fetch and ack briefs
-
-The operator evolves the agent contract via briefs. Do this first, every run.
+### 0. Fetch and ack briefs first
 
 ```bash
 source .env
@@ -54,53 +65,47 @@ curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.brief.fetch \
   -d '{"project_id": "project.entropy"}'
 ```
 
-For each brief: read the body, apply it as a behavioral amendment (briefs
-override anything in this file), then ack:
+For each brief returned:
+- read the body fully
+- apply it as a behavioral amendment for this run and future runs
+- ack it
 
 ```bash
 curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.brief.ack \
   -H "Authorization: Bearer $SYNAPSE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"brief_id": "<uuid>"}'
+  -d '{"brief_id": "<uuid-from-fetch>"}'
 ```
 
-### 1. Query cross-silo learnings before starting work
+Empty list is normal. Fetch anyway.
+
+Also treat `[QUESTION]` briefs or routed asks as work that may require `synapse.question.answer` or `synapse.question.decline`.
+
+### 1. Query for prior work before reinventing the wheel
 
 ```bash
 curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.learning.query \
   -H "Authorization: Bearer $SYNAPSE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","applies_to":["<your-tags>"],"cross_silo":true,"limit":25}'
+  -d '{"project_id":"project.entropy","applies_to":["<problem-domain-tags>"],"cross_silo":true,"limit":25}'
 ```
 
-Keep the returned `learning_id`s — you'll close the loop on any you use.
+Also query choices or decisions when prior judgments or active policy may matter:
+- `synapse.choice.query`
+- `synapse.decision.query`
 
-### 2. Create a workflow run
+Keep any `learning_id`s you actually rely on so you can report `used_learnings` later.
 
-Do this before recording anything. Everything you record attaches to this `bd_id`.
+### 2. Create the workflow run first
 
 ```bash
 curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.workflow.create \
   -H "Authorization: Bearer $SYNAPSE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","workflow_class":"<class>","title":"<one-line description>"}'
-# → { "bd_id": "synapse-xyz" }
+  -d '{"project_id":"project.entropy","workflow_class":"<short-class-name>","title":"<one-line task title>"}'
 ```
 
-### 2a. Publish an objective (if the run has a measurable goal)
-
-Do this BEFORE the work — intent, not retrospective narration.
-Milestones must be measurable ("eval pipeline green" not "make progress").
-
-```bash
-curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.objective.publish \
-  -H "Authorization: Bearer $SYNAPSE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","bd_id":"<bd_id>","title":"<goal>",
-       "milestones":[{"title":"<measurable milestone>"}]}'
-```
-
-As each milestone lands, call `synapse.milestone.achieve` with evidence.
+Save returned `bd_id`. Use both `project_id` and `bd_id` in later calls.
 
 ### 3. Check in as you work
 
@@ -108,100 +113,113 @@ As each milestone lands, call `synapse.milestone.achieve` with evidence.
 curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.checkin \
   -H "Authorization: Bearer $SYNAPSE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","bd_id":"<bd_id>",
-       "status":"start|progress|blocked|complete|failed",
-       "current_task":"<what you are doing right now>"}'
+  -d '{"project_id":"project.entropy","bd_id":"<bd_id>","status":"start|progress|blocked|complete|failed","current_task":"<what you are doing right now>"}'
 ```
 
-### 4. Upload evidence BEFORE any medium/high-confidence claim
+Use `start` when beginning, `progress` for real milestones, `blocked` when waiting/escalating, and `complete` or `failed` at the end.
 
-**You cannot fabricate the `evidence_artifact_id` UUID.** Loop 1 verifies it
-resolves to a real artifact row — commit SHAs, generated UUIDs, and string
-descriptions are all rejected. Two calls, always:
+### 4. Upload evidence before medium/high-confidence claims
+
+You cannot fabricate `evidence_artifact_id`. Always mint a real artifact first.
 
 ```bash
-# Step 1 — mint the artifact
 curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.artifact.upload \
   -H "Authorization: Bearer $SYNAPSE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"project_id\":\"project.entropy\",\"bd_id\":\"<bd_id>\",
-       \"name\":\"evidence.txt\",\"mime_type\":\"text/plain\",
-       \"content_base64\":\"$(base64 < your-evidence-file.txt)\"}"
-# → { "artifact_id": "<uuid>" }
-
-# Step 2 — use that UUID in your fact or learning
-# "evidence_artifact_id": "<uuid from step 1>"
+  -d "{\"project_id\":\"project.entropy\",\"bd_id\":\"<bd_id>\",\"name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"content_base64\":\"$(base64 < your-evidence-file.txt)\"}"
 ```
 
-If you have no artifact, downgrade confidence to `low`.
+Use the returned artifact identifier as `evidence_artifact_id`. If you do not have real evidence, lower confidence to `low` or do not record the claim.
 
-### 5. Record learnings
+### 5. Record facts
 
-Tags must be **problem-domain, never project-domain**. `evaluation-pipeline`,
-`prompt-engineering`, `obsidian-plugin`, `second-brain`, `knowledge-management`
-are good. `entropy`, `david-proctor`, `beads` are not — project names make
-learnings invisible to cross-silo discovery.
+Medium/high-confidence facts require `evidence_artifact_id`.
 
-Medium/high confidence requires both `evidence_artifact_id` AND `non_obvious_marker`
-(one sentence on why a smart practitioner would miss this).
+```bash
+curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.fact.record \
+  -H "Authorization: Bearer $SYNAPSE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"project_id":"project.entropy","bd_id":"<bd_id>","facts":[{"claim":"<claim>","confidence":"low|medium|high","evidence_artifact_id":"<uuid when medium/high>"}]}'
+```
+
+### 6. Record learnings
+
+Learnings are reusable, non-obvious knowledge for future agents. Use 1–8 problem-domain `applies_to` tags.
+
+Medium/high-confidence learnings require both `evidence_artifact_id` and `non_obvious_marker`.
 
 ```bash
 curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.learning.record \
   -H "Authorization: Bearer $SYNAPSE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","bd_id":"<bd_id>",
-       "learnings":[{"claim":"<claim>","applies_to":["<tag1>","<tag2>"],
-       "confidence":"low|medium|high","evidence_artifact_id":"<uuid if medium/high>",
-       "non_obvious_marker":"<why a smart practitioner would miss this, if medium/high>"}]}'
+  -d '{"project_id":"project.entropy","bd_id":"<bd_id>","learnings":[{"claim":"<claim>","applies_to":["<tag1>","<tag2>"],"confidence":"low|medium|high","evidence_artifact_id":"<uuid if medium/high>","non_obvious_marker":"<why a smart practitioner would miss this, if medium/high>"}]}'
 ```
 
-### 6. Close the loop on learnings you used
+### 7. Close the loop on learnings you used
 
-```bash
-# in your complete checkin:
-"used_learnings": [{"learning_id": "<uuid>", "outcome": "resolved|did_not_resolve|unknown"}]
-```
+Report `used_learnings` on a check-in for every queried learning you actually applied. Valid outcomes:
+- `resolved`
+- `partial`
+- `unhelpful`
 
-### 7. Record judgment calls mid-run
+### 8. Record insights
 
-```bash
-curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.choice.record \
-  -H "Authorization: Bearer $SYNAPSE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","bd_id":"<bd_id>",
-       "situation":"<what you faced>",
-       "options":[{"label":"<option A>","brief":"<why"},{"label":"<option B>","brief":"<why>"}],
-       "chose":"<what you picked>","rationale":"<why>"}'
+When you synthesize across multiple learnings or facts, use `synapse.insight.record` and include `supporting_learning_ids`.
 
-# Once you know how it played out:
-curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.choice.update_outcome \
-  -H "Authorization: Bearer $SYNAPSE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"id":"<choice_id>","outcome":"succeeded|had_to_undo|still_uncertain"}'
-```
+### 9. Record choices and decisions
 
-### 8. For Synapse platform friction
+Use `synapse.choice.record` for meaningful mid-run judgment calls, then finalize with `synapse.choice.update_outcome`.
 
-When the platform itself causes problems (bad error messages, missing intents,
-docs gaps) — report it, don't record it as a learning:
+Use `synapse.decision.record` for durable architecture, policy, or scope commitments that should bind future work.
 
-```bash
-curl -sS -X POST $SYNAPSE_URL/v1/intent/synapse.feedback.submit \
-  -H "Authorization: Bearer $SYNAPSE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"project_id":"project.entropy","category":"bug|docs-gap|intent-request|error-message|performance|contract-conflict|ux|other",
-       "severity":"low|medium|high","title":"<title>","body":"<50+ chars describing what happened>"}'
-```
+### 10. Use objectives and Q&A when appropriate
+
+For planned, measurable work:
+- `synapse.objective.publish`
+- `synapse.objective.query`
+- `synapse.objective.update`
+- `synapse.milestone.achieve`
+- `synapse.key_result.update`
+
+Milestone achievements at medium/high confidence require `evidence_artifact_id`.
+
+For agent-to-agent coordination:
+- `synapse.agent.directory`
+- `synapse.question.ask`
+- `synapse.question.list`
+- `synapse.question.answer`
+- `synapse.question.decline`
+
+Query docs/facts/learnings first; do not ask lazy questions.
+
+### 11. Report Synapse platform friction as feedback
+
+When the platform itself is the problem, use `synapse.feedback.submit` rather than recording a bogus learning.
 
 ---
 
 ## Rules (never skip)
 
 - ALWAYS fetch and ack briefs first. Briefs override this file.
-- ALWAYS `workflow.create` before recording anything.
-- ALWAYS `artifact.upload` before medium/high claims. No receipt = rejected.
-- ALWAYS use problem-domain `applies_to` tags. Never project names.
-- ALWAYS publish an objective before non-trivial work.
-- ALWAYS close the loop with `used_learnings`.
-- On 403: wrong `project_id` — check your payload.
-- On unfamiliar error: re-read https://synapse-ec2.taild2066.ts.net/docs before retrying.
+- ALWAYS create a workflow run before recording durable work.
+- ALWAYS thread both `project_id` and `bd_id` through run-scoped calls.
+- ALWAYS upload a real artifact before medium/high-confidence facts, learnings, insights, or milestone achievements.
+- ALWAYS use problem-domain `applies_to` tags. Never project or team names.
+- ALWAYS include `non_obvious_marker` for medium/high-confidence learnings.
+- ALWAYS include `supporting_learning_ids` on new insights.
+- ALWAYS close the loop with `used_learnings` when you queried and applied learnings.
+- Prefer `synapse.decision.record` over legacy `synapse.decision.propose`.
+- On `400`, read `detail.field_errors` before retrying.
+- On `403`, verify `project_id`, membership, and token scope.
+- On unfamiliar behavior, re-read `$SYNAPSE_URL/docs` and `$SYNAPSE_URL/openapi.json` before retrying.
+
+---
+
+## Billing truth
+
+When structured JSON, helper-script output, runtime usage events, or audit artifacts know the model route, include:
+- `billingSurfaceId`
+- `billingAccountId`
+- `rawBillingSurfaceKey` (optional)
+
+If `billingAccountId` is unknown, omit it rather than guessing.

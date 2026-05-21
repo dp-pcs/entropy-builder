@@ -39,3 +39,6 @@ _(Anything that doesn't fit above but future-you will thank present-you for.)_
 ---
 
 _Initialized empty intentionally. Do not add "(to be populated)" text._
+
+- 2026-05-14: Local `bd-lite`/`memory/BEADS.md` task tracking is retired for this repo. Use central Beads hub at `~/.beads` with project metadata `entropy_builder`; see `~/.beads/INTEGRATION.md`.
+- 2026-05-14: Synapse live contract addendum appended to `.agent/SYNAPSE.md`; briefs and `$SYNAPSE_URL/docs` supersede repo-local instructions. Current requirements include artifact-first evidence, `non_obvious_marker` for medium/high learnings, `supporting_learning_ids` for insights, `decision.record`, `question.*`, objective updates, feedback SLA, and Mission Control billing tags.

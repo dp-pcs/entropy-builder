@@ -36,16 +36,16 @@
 ## The loop (for any non-trivial task)
 
 ```
-1. bd ready           → see unblocked beads
-2. bd claim <id>      → take one
+1. bd ready --json                         → see unblocked beads
+2. bd update <id> --claim                  → take one atomically
 3. Do the work
-4. bd close <id> --reason "<specifics>"
+4. bd close <id> --reason "<specifics>"    → close with evidence
 5. Repeat
 ```
 
-If you're stuck: `bd block <id> --reason "BLOCKED: <exact blocker>"`. Blocked is a valid state. Faking completion is not.
+If you're stuck: `bd update <id> --status blocked --notes "BLOCKED: <exact blocker>"` or the current `bd` block equivalent. Blocked is a valid state. Faking completion is not.
 
-The commands above are `bd-lite` (this bootstrap's markdown fallback). For the real Go-binary [Beads by Steve Yegge](https://github.com/steveyegge/beads), use `bd update <id> --claim` instead of `bd claim <id>`. Semantics are identical. See `memory/README.md` for the upgrade path.
+Use the central Beads hub at `~/.beads` (env `BEADS_DIR=$HOME/.beads`) and tag repo work with project `entropy_builder`. Do not use retired `bd-lite.sh` or `memory/BEADS.md` ledgers. See `~/.beads/INTEGRATION.md` for the hub contract.
 
 ## Planning mode checklist
 
@@ -73,7 +73,7 @@ Before executing anything non-trivial:
 These apply to any agentic tool. Tool-specific constants are in the appendix at the bottom.
 
 - **State intent up front.** First message of a session states the task, success metric, and relevant files. Survives context compaction in every tool.
-- **Write state to files, not chat.** Chat history compacts. Files persist. Use `MEMORY.md`, `SHORT_TERM_MEMORY.md`, `BEADS.md`.
+- **Write state to durable stores, not chat.** Chat history compacts. Files and the central Beads hub persist. Use `MEMORY.md`, `SHORT_TERM_MEMORY.md`, and `~/.beads`.
 - **Restart after editing your own config.** Most tools memoize their CLAUDE.md / AGENTS.md / system-prompt equivalents at session start. Edit → restart.
 - **Kill background tasks explicitly.** Don't assume Ctrl+C cascades. Use the tool's explicit background-kill primitive.
 - **Track denial counts.** If the human denies the same kind of tool call 3 times, stop and reprompt. The classifier is diverging from intent.
@@ -149,7 +149,7 @@ Retrieval order when building something non-trivial:
 
 - `MEMORY.md` — persistent facts, append-only, survives sessions.
 - `memory/SHORT_TERM_MEMORY.md` — scratch pad for the current task. Rotate/archive on task close.
-- `memory/BEADS.md` — task graph with evidence-on-close.
+- `~/.beads` — central task graph with evidence-on-close; filter/tag project `entropy_builder`.
 - `LESSONS_LEARNED.md` — mistakes worth not repeating.
 
 Don't confuse them. "I'm investigating X" goes in SHORT_TERM. "User prefers short messages" goes in SOUL. "Server is on port 3000" goes in MEMORY.

@@ -20,7 +20,7 @@ If your tool is missing one of these, the agent degrades gracefully and logs the
 
 ## Memory tools (constant)
 
-- **`.agent/memory/bd-lite.sh`** — bead graph CLI (ready / claim / close / block / list). Appends to `.agent/memory/BEADS.md`.
+- **Central Beads hub (`~/.beads`)** — canonical task graph. Use `bd ready --json`, `bd list --project entropy_builder --json`, `bd update <id> --claim`, and `bd close <id> --reason "<evidence>"`. Do not use retired `.agent/memory/bd-lite.sh` or `.agent/memory/BEADS.md`.
 - **`.agent/memory/SHORT_TERM_MEMORY.md`** — active-task scratch pad. Separate from long-term `MEMORY.md`.
 
 ## Skills (constant)
@@ -30,7 +30,7 @@ If your tool is missing one of these, the agent degrades gracefully and logs the
 ## Recommended (human installs when ready)
 
 - **GOG CLI** (https://gogcli.sh/) — Google Workspace access (Gmail, Docs, Sheets, Calendar). See `GOGCLI_STARTER.md` for setup. Required for email-driven agent loops.
-- **Beads** by Steve Yegge — the real distributed graph issue tracker on Dolt. Replaces `bd-lite` when you want multi-agent coordination, git-based sync, or a real database. Install: `brew install beads` or `npm install -g @beads/bd`. GitHub: https://github.com/steveyegge/beads.
+- **Beads** by Steve Yegge — central task graph already lives at `~/.beads`; see `~/.beads/INTEGRATION.md`. GitHub: https://github.com/steveyegge/beads.
 
 ## MCP servers (optional)
 
@@ -41,6 +41,6 @@ Any MCP server works in this repo by default — nothing in `.agent/` assumes a 
 The agent should verify on first session:
 1. `git` present → if not, warn human.
 2. `npx wwvcd --help` works → if not, note "WWVCD unavailable; retrieval fallback = grep + read".
-3. `.agent/memory/bd-lite.sh` executable → if not, `chmod +x` it.
+3. `bd ready --json` works against `~/.beads` → if not, read `~/.beads/INTEGRATION.md` and flag the blocker.
 
 If any tool goes missing mid-project, flag in `LESSONS_LEARNED.md`.

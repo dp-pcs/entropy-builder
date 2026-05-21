@@ -1,0 +1,25 @@
+# Drop this at: <entropy-repo>/.agent/synapse.yaml
+#
+# Same file goes in BOTH ~/Documents/GitHub/entropy and ~/Documents/GitHub/entropy_builder.
+# Both repos publish runs to project.entropy — Synapse uses bd_id to distinguish
+# individual workflow runs, project_id to group them.
+
+project_id: project.entropy
+team_id: team.ai-coe
+
+agents:
+  - agent.entropy-junior                       # primary — token in Keychain as ENTROPY_SYNAPSE_TOKEN
+  - agent.entropy-claude                       # Claude Code-specific identity (if minted)
+  - agent.contractintelligence-synapsigent-v2  # synapsigent fallback — team-implicit access
+
+reportable:
+  - artifact_produced
+  - decision_made
+  - kr_advanced
+  - commit_pushed
+
+# Entropy spans consulting, adoption, and pipeline per the CoE OKR axes
+objective_hints:
+  - consulting
+  - adoption
+  - pipeline
