@@ -19,59 +19,29 @@ If --jay-repo-path is omitted, the script does `git clone` of jaykhalife/entropy
 into a temp directory. (CI must have a token with read access.)
 """
 import argparse
-import hashlib
 import json
-import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Iterable
-
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+# Make pipeline.migrations importable when running as a script from anywhere.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from pipeline.migrations import handlers, parser, paths  # noqa: E402
+from pipeline.migrations.schema import ValidationError  # noqa: E402, F401 — re-exported for test compat
+
 TEMPLATE_ROOT = REPO_ROOT / "entropy-template"
 MANIFEST_PATH = TEMPLATE_ROOT / ".jay-sync-manifest.json"
 VERSION_FILE = TEMPLATE_ROOT / "TEMPLATE_VERSION.json"
-CHANGES_DIR = "CHANGES"
-
-VALID_HANDLERS = {"rename", "add_file", "delete_file", "structure_split", "content_patch"}
-VALID_CLASSIFIERS = {
-    "participant_domain_majority",
-    "frontmatter_field_match",
-    "filename_regex",
-    "manual",
-}
-SEMVER_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)\.md$")
 
 
 # -----------------------------------------------------------------------------
-# I/O helpers
+# I/O helpers (template-side state files)
 # -----------------------------------------------------------------------------
-
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    h.update(path.read_bytes())
-    return h.hexdigest()
-
-
-def _stringify_dates(obj):
-    """Recursively convert datetime.date / datetime instances to ISO strings.
-
-    PyYAML parses unquoted YYYY-MM-DD as datetime.date, which json.dumps can't
-    serialize. We normalize before writing anything derived from frontmatter.
-    """
-    if isinstance(obj, (date, datetime)):
-        return obj.isoformat()[:10] if isinstance(obj, date) and not isinstance(obj, datetime) else obj.isoformat()
-    if isinstance(obj, dict):
-        return {k: _stringify_dates(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_stringify_dates(v) for v in obj]
-    return obj
-
 
 def _read_manifest() -> dict:
     return json.loads(MANIFEST_PATH.read_text())
@@ -111,243 +81,6 @@ def _jay_head_sha(jay_repo: Path) -> str:
 
 
 # -----------------------------------------------------------------------------
-# CHANGES file parsing + validation
-# -----------------------------------------------------------------------------
-
-class ValidationError(Exception):
-    pass
-
-
-def _list_change_files(jay_repo: Path) -> list[Path]:
-    changes_dir = jay_repo / CHANGES_DIR
-    if not changes_dir.is_dir():
-        return []
-    return sorted([p for p in changes_dir.glob("v*.md") if SEMVER_RE.match(p.name)])
-
-
-def _parse_change_file(path: Path) -> dict:
-    raw = path.read_text()
-    if not raw.startswith("---"):
-        raise ValidationError(f"{path.name}: missing YAML frontmatter")
-    parts = raw.split("---", 2)
-    if len(parts) < 3:
-        raise ValidationError(f"{path.name}: malformed frontmatter (no closing ---)")
-    try:
-        meta = yaml.safe_load(parts[1])
-    except yaml.YAMLError as e:
-        raise ValidationError(f"{path.name}: YAML parse error: {e}") from None
-    if not isinstance(meta, dict):
-        raise ValidationError(f"{path.name}: frontmatter is not a mapping")
-    meta = _stringify_dates(meta)
-    prose = parts[2].strip()
-    return {"meta": meta, "prose": prose, "filename": path.name}
-
-
-def _validate_change_entry(filename: str, entry: dict, idx: int) -> None:
-    """Raise ValidationError if a single `changes[i]` entry is malformed."""
-    prefix = f"{filename} changes[{idx}]"
-    if not isinstance(entry, dict):
-        raise ValidationError(f"{prefix}: not a mapping")
-    handler = entry.get("type")
-    if handler not in VALID_HANDLERS:
-        raise ValidationError(f"{prefix}: unknown handler type {handler!r}")
-    if not entry.get("rationale"):
-        raise ValidationError(f"{prefix}: missing rationale")
-
-    if handler == "rename":
-        for field in ("from", "to"):
-            if not entry.get(field):
-                raise ValidationError(f"{prefix} ({handler}): missing field {field!r}")
-    elif handler in ("add_file", "delete_file", "content_patch"):
-        if not entry.get("path"):
-            raise ValidationError(f"{prefix} ({handler}): missing field 'path'")
-    elif handler == "structure_split":
-        if not entry.get("from"):
-            raise ValidationError(f"{prefix} ({handler}): missing field 'from'")
-        dests = entry.get("to")
-        if not isinstance(dests, list) or len(dests) < 2:
-            raise ValidationError(f"{prefix} ({handler}): 'to' must be a list of at least 2 paths")
-        classifier = entry.get("classifier")
-        if not isinstance(classifier, dict):
-            raise ValidationError(f"{prefix} ({handler}): missing classifier mapping")
-        if classifier.get("method") not in VALID_CLASSIFIERS:
-            raise ValidationError(
-                f"{prefix} ({handler}): unknown classifier method {classifier.get('method')!r}"
-            )
-
-
-def _validate_change_file(parsed: dict) -> None:
-    meta = parsed["meta"]
-    filename = parsed["filename"]
-    file_version = SEMVER_RE.match(filename).group(0)[1:-3]  # strip leading 'v' and '.md'
-    declared_version = meta.get("version")
-    if declared_version != file_version:
-        raise ValidationError(
-            f"{filename}: frontmatter version {declared_version!r} does not match filename version {file_version!r}"
-        )
-    if meta.get("type") not in {"major", "minor", "patch"}:
-        raise ValidationError(f"{filename}: 'type' must be one of major/minor/patch")
-    changes = meta.get("changes")
-    if not isinstance(changes, list) or not changes:
-        raise ValidationError(f"{filename}: 'changes' must be a non-empty list")
-    for i, entry in enumerate(changes):
-        _validate_change_entry(filename, entry, i)
-
-
-# -----------------------------------------------------------------------------
-# Handler application
-# -----------------------------------------------------------------------------
-
-def _path_is_tracked(path: str, tracked_paths: list[str]) -> bool:
-    for tp in tracked_paths:
-        if tp.endswith("/") and path.startswith(tp):
-            return True
-        if path == tp:
-            return True
-    return False
-
-
-def _path_is_excluded(path: str, excluded_paths: list[str]) -> bool:
-    """A path is excluded if it exactly matches an exclude entry, or starts with
-    one whose entry ends in '/' (directory exclude).
-    Excluded paths exist in Jay's repo but are intentionally not mirrored into
-    entropy-template/ (so they don't ship in vault zips to end users).
-    """
-    for ep in excluded_paths or []:
-        if ep.endswith("/") and path.startswith(ep):
-            return True
-        if path == ep:
-            return True
-    return False
-
-
-def _apply_rename(entry: dict, manifest: dict, dry_run: bool) -> list[str]:
-    src_rel = entry["from"].rstrip("/")
-    dst_rel = entry["to"].rstrip("/")
-    excluded = manifest.get("excluded_paths", [])
-    if _path_is_excluded(src_rel, excluded) and _path_is_excluded(dst_rel, excluded):
-        return [f"skipped (excluded): rename {src_rel} -> {dst_rel}"]
-    if _path_is_excluded(src_rel, excluded) or _path_is_excluded(dst_rel, excluded):
-        # Rename crosses the exclusion boundary — needs human handling.
-        raise ValidationError(
-            f"rename: {src_rel!r} -> {dst_rel!r} crosses exclusion boundary; "
-            "split into delete_file + add_file or adjust excluded_paths"
-        )
-    src_abs = TEMPLATE_ROOT / src_rel
-    dst_abs = TEMPLATE_ROOT / dst_rel
-    if not src_abs.exists():
-        raise ValidationError(f"rename: source {src_rel!r} does not exist in template")
-    if dst_abs.exists():
-        raise ValidationError(f"rename: destination {dst_rel!r} already exists in template")
-    if not dry_run:
-        dst_abs.parent.mkdir(parents=True, exist_ok=True)
-        src_abs.rename(dst_abs)
-    # Update manifest file entries (in-memory; final write is gated by dry_run upstream)
-    affected = []
-    rewritten: dict[str, dict] = {}
-    for path, info in manifest["files"].items():
-        if path == src_rel or path.startswith(src_rel + "/"):
-            new_path = dst_rel + path[len(src_rel):]
-            info["dest_path_in_template"] = f"entropy-template/{new_path}"
-            rewritten[new_path] = info
-            affected.append(f"{path} -> {new_path}")
-        else:
-            rewritten[path] = info
-    manifest["files"] = rewritten
-    return affected
-
-
-def _apply_add_file(entry: dict, jay_repo: Path, manifest: dict, version: str, dry_run: bool) -> list[str]:
-    rel = entry["path"]
-    if _path_is_excluded(rel, manifest.get("excluded_paths", [])):
-        return [f"skipped (excluded): {rel}"]
-    if not _path_is_tracked(rel, manifest["tracked_paths"]):
-        raise ValidationError(f"add_file: {rel!r} is outside tracked_paths; widen tracked_paths or fix the entry")
-    src = jay_repo / rel
-    if not src.is_file():
-        raise ValidationError(f"add_file: {rel!r} does not exist in Jay's repo at this commit")
-    dst = TEMPLATE_ROOT / rel
-    if not dry_run:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dst)
-    manifest["files"][rel] = {
-        "source_sha256": _sha256(src),  # hash from Jay's side — safe in dry-run too
-        "dest_path_in_template": f"entropy-template/{rel}",
-        "first_seen_version": version,
-        "last_updated_version": version,
-    }
-    return [f"added {rel}"]
-
-
-def _apply_delete_file(entry: dict, manifest: dict, dry_run: bool) -> list[str]:
-    rel = entry["path"]
-    if _path_is_excluded(rel, manifest.get("excluded_paths", [])):
-        return [f"skipped (excluded): {rel}"]
-    if rel not in manifest["files"]:
-        raise ValidationError(f"delete_file: {rel!r} not in manifest")
-    target = TEMPLATE_ROOT / rel
-    if not dry_run and target.exists():
-        target.unlink()
-    del manifest["files"][rel]
-    return [f"deleted {rel}"]
-
-
-def _apply_content_patch(entry: dict, jay_repo: Path, manifest: dict, version: str, dry_run: bool) -> list[str]:
-    rel = entry["path"]
-    if _path_is_excluded(rel, manifest.get("excluded_paths", [])):
-        return [f"skipped (excluded): {rel}"]
-    if rel not in manifest["files"]:
-        raise ValidationError(f"content_patch: {rel!r} not in manifest; add_file first")
-    src = jay_repo / rel
-    if not src.is_file():
-        raise ValidationError(f"content_patch: {rel!r} missing in Jay's repo at this commit")
-    dst = TEMPLATE_ROOT / rel
-    if not dry_run:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dst)
-    manifest["files"][rel]["source_sha256"] = _sha256(src)
-    manifest["files"][rel]["last_updated_version"] = version
-    return [f"patched {rel}"]
-
-
-def _apply_structure_split(entry: dict, manifest: dict) -> list[str]:
-    src_rel = entry["from"].rstrip("/")
-    if _path_is_excluded(src_rel, manifest.get("excluded_paths", [])):
-        return [f"skipped (excluded): structure_split from {src_rel}"]
-    """Bot-side: just create the destination folders + flag for human review.
-
-    The actual per-file classification happens in the migration applier
-    (runs against user vaults). For the entropy-template/ side, the bot leaves
-    files in place — entropy-template/ is a template, not user data, so there's
-    nothing to classify yet. The entry is recorded so user-side applier can
-    replay it later.
-    """
-    src_rel = entry["from"].rstrip("/")
-    src_abs = TEMPLATE_ROOT / src_rel
-    affected = [f"structure_split: {src_rel} -> {entry['to']} (recorded; applies to user vaults only)"]
-    # If src doesn't exist in template, that's fine — it might be a user-only
-    # folder Jay introduced via convention. Just record the migration.
-    if src_abs.is_dir():
-        affected.append(f"  ({src_rel} exists in template — no per-file moves needed at template level)")
-    return affected
-
-
-def _apply_change_entry(entry: dict, jay_repo: Path, manifest: dict, version: str, dry_run: bool) -> list[str]:
-    handler = entry["type"]
-    if handler == "rename":
-        return _apply_rename(entry, manifest, dry_run)
-    if handler == "add_file":
-        return _apply_add_file(entry, jay_repo, manifest, version, dry_run)
-    if handler == "delete_file":
-        return _apply_delete_file(entry, manifest, dry_run)
-    if handler == "content_patch":
-        return _apply_content_patch(entry, jay_repo, manifest, version, dry_run)
-    if handler == "structure_split":
-        return _apply_structure_split(entry, manifest)
-    raise ValidationError(f"unknown handler {handler!r}")  # belt-and-suspenders
-
-
-# -----------------------------------------------------------------------------
 # Drift detection
 # -----------------------------------------------------------------------------
 
@@ -363,14 +96,13 @@ def _detect_drift(jay_repo: Path, manifest: dict, processed_paths: set[str]) -> 
     drift = []
     for rel, info in manifest["files"].items():
         if rel in processed_paths:
-            continue  # change was covered by a CHANGES entry
+            continue
         jay_path = jay_repo / rel
         if not jay_path.is_file():
             drift.append(f"missing in Jay's repo: {rel}")
             continue
-        if _sha256(jay_path) != info["source_sha256"]:
+        if paths.sha256_of_path(jay_path) != info["source_sha256"]:
             drift.append(f"content changed without CHANGES entry: {rel}")
-    # New files in tracked paths that aren't in manifest and aren't excluded
     for tp in manifest["tracked_paths"]:
         target = jay_repo / tp
         if tp.endswith("/") and target.is_dir():
@@ -380,7 +112,7 @@ def _detect_drift(jay_repo: Path, manifest: dict, processed_paths: set[str]) -> 
                 rel = str(f.relative_to(jay_repo)).replace("\\", "/")
                 if rel in manifest["files"] or rel in processed_paths:
                     continue
-                if _path_is_excluded(rel, excluded):
+                if paths.path_is_excluded(rel, excluded):
                     continue
                 drift.append(f"new file in tracked path without CHANGES entry: {rel}")
     return drift
@@ -413,23 +145,22 @@ def run(jay_repo: Path, dry_run: bool = False) -> int:
         return 2
 
     # Discover new CHANGES files
-    all_changes = _list_change_files(jay_repo)
+    all_changes = parser.list_change_files(jay_repo)
     ingested_versions = {c["version"] for c in manifest["ingested_changes"]}
     new_changes = []
     for cf in all_changes:
-        parsed = _parse_change_file(cf)
+        parsed = parser.parse_change_file(cf)
         if parsed["meta"]["version"] in ingested_versions:
             continue
-        _validate_change_file(parsed)
+        parser.validate_change_file(parsed)
+        parsed["__source_path"] = cf  # carry for archival into entropy-template/.changelog/
         new_changes.append(parsed)
 
     if not new_changes:
-        # No new CHANGES — still check for drift
         drift = _detect_drift(jay_repo, manifest, set())
         if not drift:
-            print(f"SYNC: nothing to do (no new CHANGES, no drift)", file=sys.stderr)
+            print("SYNC: nothing to do (no new CHANGES, no drift)", file=sys.stderr)
             return 2
-        # Drift but no CHANGES — still want a PR so reviewer sees it
         title = "sync: drift detected in Jay's repo (no CHANGES entry)"
         body = _build_pr_body([], drift, jay_head, manifest)
         if not dry_run:
@@ -447,20 +178,33 @@ def run(jay_repo: Path, dry_run: bool = False) -> int:
     for parsed in new_changes:
         meta = parsed["meta"]
         version = meta["version"]
+        scope = meta.get("scope", "core")
         entry_summaries = []
         for entry in meta["changes"]:
-            actions = _apply_change_entry(entry, jay_repo, manifest, version, dry_run)
+            actions = handlers.apply_change_entry(
+                entry, jay_repo, manifest, version, dry_run, target_root=TEMPLATE_ROOT,
+            )
             entry_summaries.append({"type": entry["type"], "actions": actions, "entry": entry})
         all_processed_paths |= _processed_paths_for(meta["changes"])
         summaries.append({"version": version, "meta": meta, "prose": parsed["prose"], "entries": entry_summaries})
 
-        # Append to TEMPLATE_VERSION.json
-        version_data["version"] = version
+        # Archive the original CHANGES file so the /api/migrations endpoint can serve it.
+        # Bucketed by scope (role: colon → dash for filesystem-friendliness).
+        if not dry_run:
+            scope_dir_name = scope.replace(":", "-")
+            archive_dir = TEMPLATE_ROOT / ".changelog" / scope_dir_name
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            src_path = parsed["__source_path"]
+            (archive_dir / src_path.name).write_bytes(src_path.read_bytes())
+
+        version_data["version"] = version  # legacy: latest applied version (any scope)
         version_data["updated"] = meta.get("date") or date.today().isoformat()
+        version_data.setdefault("versions", {})[scope] = version  # multi-axis (see [[entropy-versioning]])
         version_data.setdefault("history", []).insert(0, {
             "version": version,
             "date": meta.get("date") or date.today().isoformat(),
             "summary": meta.get("summary", ""),
+            "scope": scope,
             "changes": [
                 {k: v for k, v in entry.items() if k != "rationale"} | {"description": entry.get("rationale", "")}
                 for entry in meta["changes"]
@@ -469,6 +213,7 @@ def run(jay_repo: Path, dry_run: bool = False) -> int:
 
         manifest["ingested_changes"].append({
             "version": version,
+            "scope": scope,
             "ingested_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "source_commit": jay_head,
         })
@@ -496,7 +241,9 @@ def _build_pr_body(summaries: list[dict], drift: list[str], jay_head: str, manif
     if summaries:
         lines.append("## New versions")
         for s in summaries:
-            lines.append(f"### v{s['version']} — {s['meta'].get('summary', '')}")
+            scope = s["meta"].get("scope", "core")
+            scope_tag = "" if scope == "core" else f" *(scope: {scope})*"
+            lines.append(f"### v{s['version']} — {s['meta'].get('summary', '')}{scope_tag}")
             for entry_sum in s["entries"]:
                 entry = entry_sum["entry"]
                 lines.append(f"- **{entry['type']}**: {entry.get('rationale', '')}")
@@ -526,10 +273,10 @@ def _emit_pr(title: str, body: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--jay-repo-path", help="Path to a local clone of Jay's repo (otherwise: clone fresh)")
-    parser.add_argument("--dry-run", action="store_true", help="Do not modify any files; only print proposed PR")
-    args = parser.parse_args()
+    arg_parser = argparse.ArgumentParser(description=__doc__)
+    arg_parser.add_argument("--jay-repo-path", help="Path to a local clone of Jay's repo (otherwise: clone fresh)")
+    arg_parser.add_argument("--dry-run", action="store_true", help="Do not modify any files; only print proposed PR")
+    args = arg_parser.parse_args()
 
     if args.jay_repo_path:
         return run(Path(args.jay_repo_path).resolve(), dry_run=args.dry_run)

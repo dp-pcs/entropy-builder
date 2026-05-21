@@ -463,3 +463,185 @@ changes:
     assert sync.run(jay, dry_run=True) == 0
     assert not (template / "Portfolio Brain" / "_skills" / "dry.md").exists()
     assert (template / ".jay-sync-manifest.json").read_text() == before_manifest
+
+
+# -----------------------------------------------------------------------------
+# Scope (multi-axis versioning) tests — see [[entropy-versioning]] memory
+# -----------------------------------------------------------------------------
+
+def test_scope_defaults_to_core_when_omitted(fake_repos, capsys):
+    """Backward-compat: CHANGES files without a scope field default to 'core'."""
+    jay, template = fake_repos
+    (jay / "Portfolio Brain" / "_skills" / "x.md").write_text("# X\n")
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+summary: no scope declared
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/x.md
+    rationale: r
+---
+""")
+    _commit_all(jay, "add")
+
+    assert sync.run(jay) == 0
+    manifest = json.loads((template / ".jay-sync-manifest.json").read_text())
+    assert manifest["ingested_changes"][0]["scope"] == "core"
+    version_data = json.loads((template / "TEMPLATE_VERSION.json").read_text())
+    assert version_data["history"][0]["scope"] == "core"
+
+
+def test_scope_role_is_accepted_and_recorded(fake_repos, capsys):
+    """role:<name> scope is valid and flows into manifest + version history."""
+    jay, template = fake_repos
+    (jay / "Portfolio Brain" / "_skills" / "sales-only.md").write_text("# Sales\n")
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+scope: role:ic-sales
+summary: Sales-only skill
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/sales-only.md
+    rationale: "Sales workflow"
+---
+""")
+    _commit_all(jay, "add sales skill")
+
+    assert sync.run(jay) == 0
+    manifest = json.loads((template / ".jay-sync-manifest.json").read_text())
+    assert manifest["ingested_changes"][0]["scope"] == "role:ic-sales"
+    out = capsys.readouterr().out
+    assert "scope: role:ic-sales" in out
+
+
+def test_changes_file_archived_to_changelog_core(fake_repos, capsys):
+    """Processed CHANGES files are copied into entropy-template/.changelog/core/."""
+    jay, template = fake_repos
+    (jay / "Portfolio Brain" / "_skills" / "y.md").write_text("# Y\n")
+    changes_content = """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+summary: Archive me
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/y.md
+    rationale: "for archival test"
+---
+
+Prose body that must survive archival.
+"""
+    _write_changes_file(jay, "v1.1.0.md", changes_content)
+    _commit_all(jay, "add y")
+
+    assert sync.run(jay) == 0
+    archived = template / ".changelog" / "core" / "v1.1.0.md"
+    assert archived.exists(), "CHANGES file should be archived under .changelog/core/"
+    assert archived.read_text() == changes_content
+
+
+def test_role_scoped_changes_archived_under_role_subdir(fake_repos, capsys):
+    """role:ic-sales scope buckets archive into .changelog/role-ic-sales/."""
+    jay, template = fake_repos
+    (jay / "Portfolio Brain" / "_skills" / "sales.md").write_text("# Sales\n")
+    _write_changes_file(jay, "v1.2.0.md", """---
+version: 1.2.0
+date: 2026-05-14
+type: minor
+scope: role:ic-sales
+summary: Sales pack update
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/sales.md
+    rationale: "sales-only"
+---
+""")
+    _commit_all(jay, "sales pack")
+
+    assert sync.run(jay) == 0
+    archived = template / ".changelog" / "role-ic-sales" / "v1.2.0.md"
+    assert archived.exists()
+    # And it should NOT be under core/
+    assert not (template / ".changelog" / "core" / "v1.2.0.md").exists()
+
+
+def test_multi_axis_versions_map_populated(fake_repos, capsys):
+    """TEMPLATE_VERSION.json grows a `versions: {scope: version}` map."""
+    jay, template = fake_repos
+    (jay / "Portfolio Brain" / "_skills" / "core-thing.md").write_text("# Core\n")
+    (jay / "Portfolio Brain" / "_skills" / "tech-thing.md").write_text("# Tech\n")
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+summary: core change
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/core-thing.md
+    rationale: r
+---
+""")
+    _write_changes_file(jay, "v1.2.0.md", """---
+version: 1.2.0
+date: 2026-05-14
+type: minor
+scope: role:ic-tech
+summary: tech-only change
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/tech-thing.md
+    rationale: r
+---
+""")
+    _commit_all(jay, "both")
+
+    assert sync.run(jay) == 0
+    version_data = json.loads((template / "TEMPLATE_VERSION.json").read_text())
+    assert version_data["versions"]["core"] == "1.1.0"
+    assert version_data["versions"]["role:ic-tech"] == "1.2.0"
+
+
+def test_dry_run_does_not_archive(fake_repos, capsys):
+    """Dry-run skips the archive write just like it skips file mutations."""
+    jay, template = fake_repos
+    (jay / "Portfolio Brain" / "_skills" / "dry-arch.md").write_text("# Dry\n")
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+summary: dry
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/dry-arch.md
+    rationale: r
+---
+""")
+    _commit_all(jay, "dry archive")
+
+    assert sync.run(jay, dry_run=True) == 0
+    assert not (template / ".changelog").exists()
+
+
+def test_invalid_scope_raises_validation_error(fake_repos):
+    """Scope must be 'core' or 'role:<name>'. Anything else aborts."""
+    jay, _ = fake_repos
+    _write_changes_file(jay, "v1.1.0.md", """---
+version: 1.1.0
+date: 2026-05-14
+type: minor
+scope: bogus_scope
+summary: bad
+changes:
+  - type: add_file
+    path: Portfolio Brain/_skills/x.md
+    rationale: r
+---
+""")
+    _commit_all(jay, "bad scope")
+
+    with pytest.raises(sync.ValidationError, match="invalid scope"):
+        sync.run(jay)

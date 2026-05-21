@@ -1,10 +1,11 @@
 # webapp/main.py
+import json
 import re
 from pathlib import Path
 from typing import Optional
 import requests
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -15,6 +16,10 @@ from .session import get_token, get_session_value
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+
+# Migration endpoints — public, no auth. See [[entropy-migration-auth]] memory.
+_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+_ROLE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
 class PresignRequest(BaseModel):
@@ -43,6 +48,27 @@ def _current_user(entropy_auth: Optional[str] = Cookie(default=None, alias=_AUTH
     if not entropy_auth:
         return None
     return get_auth_user(entropy_auth)
+
+
+def _template_root() -> Optional[Path]:
+    """Path to entropy-template/ for serving migration archives, or None if unset."""
+    if not settings.entropy_template_path:
+        return None
+    root = Path(settings.entropy_template_path)
+    return root if root.is_dir() else None
+
+
+def _load_template_version() -> Optional[dict]:
+    root = _template_root()
+    if root is None:
+        return None
+    version_file = root / "TEMPLATE_VERSION.json"
+    if not version_file.is_file():
+        return None
+    try:
+        return json.loads(version_file.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 def _check_job_access(state: dict, user: Optional[dict], html: bool = False, job_id: str = "") -> None:
@@ -81,6 +107,55 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         return JSONResponse({"status": "ok"})
+
+    @app.get("/api/template/version")
+    def template_version(role: Optional[str] = None):
+        """Public: latest template version(s).
+
+        Without ?role: returns {core_version, versions?, updated} where
+          `versions` is the multi-axis map (core + role packs) when populated.
+        With ?role=<name>: returns {core_version, role_pack: {role, version}, updated}.
+        """
+        if role is not None and not _ROLE_RE.match(role):
+            raise HTTPException(status_code=400, detail="invalid role name")
+        data = _load_template_version()
+        if data is None:
+            raise HTTPException(status_code=503, detail="template version not available")
+        versions_map = data.get("versions") or {}
+        core_version = versions_map.get("core") or data.get("version")
+        out: dict = {"core_version": core_version, "updated": data.get("updated")}
+        if role is not None:
+            role_key = f"role:{role}"
+            if role_key in versions_map:
+                out["role_pack"] = {"role": role, "version": versions_map[role_key]}
+            else:
+                out["role_pack"] = None  # no pack published for this role yet
+        else:
+            out["versions"] = versions_map or {"core": core_version}
+        return out
+
+    @app.get("/api/migrations/{version}")
+    def migration_payload(version: str, scope: str = "core"):
+        """Public: raw CHANGES/vX.Y.Z.md content for a given (scope, version).
+
+        scope defaults to 'core'. role:<name> is accepted (e.g. ?scope=role:ic-sales).
+        Returns text/markdown — the applier parses it with the same parser as the bot.
+        """
+        if not _SEMVER_RE.match(version):
+            raise HTTPException(status_code=400, detail="invalid version (want N.N.N)")
+        if scope == "core":
+            scope_dir = "core"
+        elif scope.startswith("role:") and _ROLE_RE.match(scope[len("role:"):]):
+            scope_dir = "role-" + scope[len("role:"):]
+        else:
+            raise HTTPException(status_code=400, detail="invalid scope")
+        archive_root = _template_root()
+        if archive_root is None:
+            raise HTTPException(status_code=503, detail="template archive not available")
+        path = archive_root / ".changelog" / scope_dir / f"v{version}.md"
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail=f"no migration for {scope}@v{version}")
+        return PlainTextResponse(content=path.read_text(), media_type="text/markdown")
 
     @app.get("/api/me")
     def me(user=Depends(_current_user)):
